@@ -1,1 +1,0 @@
-/usr/lib/postgresql/16/bin/postgres "-D" "/mnt/d/ai_astitentbot/sfera5-radio/.pgdata" "-p" "5433" "-k" "/tmp"
