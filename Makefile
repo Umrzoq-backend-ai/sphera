@@ -1,4 +1,4 @@
-.PHONY: dev stop db-init db-reset test build logs
+.PHONY: dev stop db-init db-reset test build logs tunnel frontend-build frontend-dev
 
 VENV := .venv/bin
 LOGS := .logs
@@ -11,6 +11,18 @@ dev:
 
 stop:
 	bash infra/scripts/stop-dev.sh
+
+# ── Frontend ─────────────────────────────────────────────────
+frontend-dev:
+	cd frontend && npm run dev
+
+frontend-build:
+	cd frontend && npm run build
+
+# ── Tunnel ───────────────────────────────────────────────────
+tunnel:
+	@echo "Starting Cloudflare Tunnel on port 8001..."
+	cloudflared tunnel --url http://localhost:8001
 
 # ── Database ─────────────────────────────────────────────────
 db-init:
