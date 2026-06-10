@@ -19,14 +19,3 @@ bin/cloudflared
 # Media
 *.mp3
 *.wav
-
-# Legacy folders (replaced by new structure)
-radio-api/
-miniapp/
-radio-host/
-telegram-bot/
-icecast.xml
-icecast.local.xml
-run-dev.sh
-stop-dev.sh
-HISOBOT.md
