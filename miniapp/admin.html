@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Sfera5 — Админка</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="admin">
+        <header class="admin-top">
+            <div class="brand">
+                <div class="logo">IN<b>TR</b></div>
+                <div class="sub">ADMIN</div>
+            </div>
+            <div class="admin-tabs">
+                <button class="atab active" data-tab="moder">🎙 Эфир</button>
+                <button class="atab" data-tab="anons">📢 Анонсы</button>
+            </div>
+        </header>
+
+        <div id="authError" class="admin-error hidden">
+            🔒 Доступ только для администратора.
+        </div>
+
+        <!-- ===== Модерация эфира ===== -->
+        <section class="admin-screen" id="tab-moder">
+            <h2 class="admin-title">Черновики ИИ (на одобрение)</h2>
+            <p class="admin-hint">ИИ собрал чат и предложил выпуск. Отредактируйте и одобрите — текст уйдёт в эфир.</p>
+            <div id="draftsList" class="drafts-list">
+                <div class="admin-empty">Загрузка…</div>
+            </div>
+        </section>
+
+        <!-- ===== Анонсы ===== -->
+        <section class="admin-screen hidden" id="tab-anons">
+            <h2 class="admin-title">Окна объявлений (стартовый экран)</h2>
+
+            <div class="glass anons-edit" data-slot="1">
+                <div class="anons-edit-head">Окно 1</div>
+                <input class="adm-input" data-f="emoji" placeholder="Эмодзи (📻)" maxlength="8">
+                <input class="adm-input" data-f="title" placeholder="Заголовок">
+                <textarea class="adm-input" data-f="text" rows="3" placeholder="Текст объявления"></textarea>
+                <input class="adm-input" data-f="image_url" placeholder="URL картинки (необязательно)">
+                <button class="adm-save" data-slot="1">💾 Сохранить окно 1</button>
+            </div>
+
+            <div class="glass anons-edit" data-slot="2">
+                <div class="anons-edit-head">Окно 2</div>
+                <input class="adm-input" data-f="emoji" placeholder="Эмодзи (🤖)" maxlength="8">
+                <input class="adm-input" data-f="title" placeholder="Заголовок">
+                <textarea class="adm-input" data-f="text" rows="3" placeholder="Текст объявления"></textarea>
+                <input class="adm-input" data-f="image_url" placeholder="URL картинки (необязательно)">
+                <button class="adm-save" data-slot="2">💾 Сохранить окно 2</button>
+            </div>
+        </section>
+
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
