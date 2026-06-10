@@ -95,7 +95,7 @@ export function ChatInput({ onSendMessage, onToast, city, language, onPointsUpda
         }
         onToast(t('toast_limit'));
       } else {
-        onToast('⚠️ Ошибка отправки');
+        onToast(t('send_error'));
       }
     } finally {
       setPendingVoice(null);
@@ -107,7 +107,7 @@ export function ChatInput({ onSendMessage, onToast, city, language, onPointsUpda
     if (!file) return;
 
     if (file.size > 20 * 1024 * 1024) {
-      onToast('⚠️ Файл слишком большой (макс 20MB)');
+      onToast(t('file_too_big'));
       return;
     }
 
@@ -127,9 +127,9 @@ export function ChatInput({ onSendMessage, onToast, city, language, onPointsUpda
         }
         onToast(t('toast_limit'));
       } else if (error.status === 400) {
-        onToast('⚠️ Неподдерживаемый тип файла');
+        onToast(t('file_unsupported'));
       } else {
-        onToast('⚠️ Ошибка отправки файла');
+        onToast(t('file_error'));
       }
     } finally {
       if (fileInputRef.current) {

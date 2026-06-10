@@ -1,4 +1,5 @@
 import { API_URL } from '../../lib/config';
+import { useTranslation } from '../../hooks/useTranslation';
 import type { ChatMessage, User } from '../../types';
 
 interface ChatMessageProps {
@@ -7,6 +8,7 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message, currentUser }: ChatMessageProps) {
+  const { t } = useTranslation('radio');
   const isAI = message.kind === 'ai' || message.username?.includes('ИИ');
   const isMine = currentUser && message.username === (currentUser.username || currentUser.full_name || `id${currentUser.telegram_id}`);
 
@@ -31,7 +33,7 @@ export function ChatMessage({ message, currentUser }: ChatMessageProps) {
 
   const renderContent = () => {
     if (message.voice_url) {
-      return <VoicePlayer url={message.voice_url} duration={message.duration_sec} />;
+      return <VoicePlayer url={message.voice_url} duration={message.duration_sec} voiceLabel={t('voice_label')} />;
     }
     if (message.file_url) {
       return <FileAttachment url={message.file_url} name={message.file_name || 'файл'} isMine={!!isMine} />;
@@ -44,7 +46,7 @@ export function ChatMessage({ message, currentUser }: ChatMessageProps) {
       <div className={bubbleClass}>
         {!isMine && !isAI && (
           <div className="text-[11px] font-bold text-[#38e1ff] mb-0.5">
-            {message.username || 'Гость'}
+            {message.username || t('guest')}
           </div>
         )}
         {renderContent()}
@@ -56,7 +58,7 @@ export function ChatMessage({ message, currentUser }: ChatMessageProps) {
   );
 }
 
-function VoicePlayer({ url, duration }: { url: string; duration: number | null }) {
+function VoicePlayer({ url, duration, voiceLabel }: { url: string; duration: number | null; voiceLabel: string }) {
   const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
   
   const handlePlay = () => {
@@ -73,7 +75,7 @@ function VoicePlayer({ url, duration }: { url: string; duration: number | null }
         ▶
       </button>
       <span className="text-xs opacity-85">
-        🎵 {duration ? `${duration}ʺ` : 'голосовое'}
+        🎵 {duration ? `${duration}ʺ` : voiceLabel}
       </span>
     </div>
   );

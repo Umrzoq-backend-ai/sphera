@@ -35,17 +35,17 @@ export function GoLiveButton({ city, onToast }: GoLiveButtonProps) {
           const msg = JSON.parse(event.data);
           
           if (msg.type === 'broadcast_unavailable') {
-            onToast('🔇 Прямой эфир доступен только на сервере (Icecast)');
+            onToast(t('broadcast_unavailable'));
             stopBroadcast();
           } else if (msg.type === 'broadcast_busy') {
-            onToast('⚠️ Эфир уже занят другим ведущим');
+            onToast(t('broadcast_busy'));
             stopBroadcast();
           } else if (msg.type === 'broadcast_started') {
             setIsLive(true);
-            onToast('🔴 Вы в прямом эфире!');
+            onToast(t('broadcast_started'));
             startRecorder(stream, ws);
           } else if (msg.type === 'broadcast_error') {
-            onToast('⚠️ Эфир прерван');
+            onToast(t('broadcast_error'));
             stopBroadcast();
           }
         } catch (e) {
@@ -58,7 +58,7 @@ export function GoLiveButton({ city, onToast }: GoLiveButtonProps) {
       };
 
       ws.onerror = () => {
-        onToast('Ошибка соединения с эфиром');
+        onToast(t('broadcast_connection_error'));
       };
     } catch (e) {
       console.error('Broadcast error:', e);

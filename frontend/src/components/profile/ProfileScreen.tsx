@@ -1,5 +1,4 @@
 import { useTranslation } from '../../hooks/useTranslation';
-import { ROLE_NAMES, LANG_NAMES, TONE_NAMES, FOCUS_NAMES } from '../../lib/i18n';
 import type { User } from '../../types';
 
 interface ProfileScreenProps {
@@ -7,24 +6,23 @@ interface ProfileScreenProps {
 }
 
 export function ProfileScreen({ user }: ProfileScreenProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('radio');
 
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <div className="text-[#6b7c9e]">Загрузка...</div>
+        <div className="text-[#6b7c9e]">...</div>
       </div>
     );
   }
 
   const level = Math.floor((user.points || 0) / 100) + 1;
 
-  const roleHints: Record<string, string> = {
-    slusatel: '🎧 Вы — Слушатель. Общайтесь в чате и копите баллы.',
-    aktivniy: '✅ Вы — Активный! Ваши сообщения попадают в сводку эфира.',
-    doverenniy: '🔴 Вы — Доверенный! Доступен прямой выход в эфир.',
-    admin: '👑 Вы — Администратор. Полный доступ.',
-  };
+  const roleName = t(`role_${user.role}`);
+  const roleHint = t(`role_hint_${user.role}`);
+  const langName = t(`lang_${user.language}`);
+  const toneName = user.psychotype ? t(`tone_${user.psychotype.emotional_tone}`) : '—';
+  const focusName = user.psychotype ? t(`focus_${user.psychotype.focus_of_attention}`) : '—';
 
   return (
     <div className="flex flex-col gap-3">
@@ -48,8 +46,8 @@ export function ProfileScreen({ user }: ProfileScreenProps) {
       {/* Profile Info */}
       <div className="glass p-4 flex flex-col gap-2.5">
         <ProfileRow label="ID" value={String(user.telegram_id)} />
-        <ProfileRow label={t('pf_role')} value={ROLE_NAMES[user.role] || user.role} />
-        <ProfileRow label={t('pf_lang')} value={LANG_NAMES[user.language] || user.language} />
+        <ProfileRow label={t('pf_role')} value={roleName} />
+        <ProfileRow label={t('pf_lang')} value={langName} />
         <ProfileRow label={t('pf_level')} value={String(level)} />
       </div>
 
@@ -60,26 +58,20 @@ export function ProfileScreen({ user }: ProfileScreenProps) {
         </div>
         {user.psychotype ? (
           <>
-            <ProfileRow
-              label={t('pf_tone')}
-              value={TONE_NAMES[user.psychotype.emotional_tone] || '—'}
-            />
-            <ProfileRow
-              label={t('pf_focus')}
-              value={FOCUS_NAMES[user.psychotype.focus_of_attention] || '—'}
-            />
+            <ProfileRow label={t('pf_tone')} value={toneName} />
+            <ProfileRow label={t('pf_focus')} value={focusName} />
             <ProfileRow label={t('pf_topic')} value={user.psychotype.key_topic || '—'} />
           </>
         ) : (
           <div className="text-sm text-[#6b7c9e] text-center py-2">
-            Отправьте сообщение для определения психотипа
+            {t('psycho_hint')}
           </div>
         )}
       </div>
 
       {/* Role Hint */}
       <div className="glass p-3.5 text-[13px] leading-relaxed text-[#dbe9ff]">
-        {roleHints[user.role] || ''}
+        {roleHint}
       </div>
 
       {/* Admin Link */}
@@ -88,7 +80,7 @@ export function ProfileScreen({ user }: ProfileScreenProps) {
           href="/admin"
           className="block text-center py-3.5 rounded-[14px] border border-[#2ea8ff] bg-gradient-to-br from-[rgba(46,168,255,0.2)] to-[rgba(56,225,255,0.08)] text-[#38e1ff] text-sm font-bold tracking-wide"
         >
-          🛠 Админ-панель
+          {t('admin_panel')}
         </a>
       )}
     </div>
