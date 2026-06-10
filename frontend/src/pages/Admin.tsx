@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useTranslation } from '../hooks/useTranslation';
 
 export function Admin() {
+  const { t } = useTranslation('admin');
   const [activeTab, setActiveTab] = useState<'moder' | 'anons'>('moder');
 
   return (
@@ -13,7 +15,7 @@ export function Admin() {
               IN<span className="text-[#38e1ff]">TR</span>
             </div>
             <div className="text-[9px] tracking-[4px] text-[#6b7c9e] mt-0.5">
-              ADMIN
+              {t('admin_title')}
             </div>
           </div>
 
@@ -28,7 +30,7 @@ export function Admin() {
               }`}
               style={activeTab === 'moder' ? { boxShadow: '0 0 16px var(--glow)' } : {}}
             >
-              🎙 Эфир
+              {t('tab_efir')}
             </button>
             <button
               onClick={() => setActiveTab('anons')}
@@ -39,7 +41,7 @@ export function Admin() {
               }`}
               style={activeTab === 'anons' ? { boxShadow: '0 0 16px var(--glow)' } : {}}
             >
-              📢 Анонсы
+              {t('tab_anons')}
             </button>
           </div>
         </header>
@@ -49,13 +51,13 @@ export function Admin() {
           {activeTab === 'moder' && (
             <>
               <h2 className="text-[17px] font-extrabold text-[#38e1ff] tracking-wide">
-                Черновики ИИ (на одобрение)
+                {t('drafts_title')}
               </h2>
               <p className="text-xs text-[#6b7c9e] -mt-2 leading-relaxed">
-                ИИ собрал чат и предложил выпуск. Отредактируйте и одобрите — текст уйдёт в эфир.
+                {t('drafts_sub')}
               </p>
               <div className="glass p-8 text-center text-[#6b7c9e]">
-                Нет черновиков. ИИ ещё собирает заявки студии…
+                {t('drafts_empty')}
               </div>
             </>
           )}
@@ -63,10 +65,10 @@ export function Admin() {
           {activeTab === 'anons' && (
             <>
               <h2 className="text-[17px] font-extrabold text-[#38e1ff] tracking-wide">
-                Окна объявлений (стартовый экран)
+                {t('anons_editor_title')}
               </h2>
               <div className="glass p-4 text-center text-[#6b7c9e]">
-                Редактор анонсов (coming soon)
+                {t('anons_editor_placeholder')}
               </div>
             </>
           )}

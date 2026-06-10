@@ -77,11 +77,7 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
         break;
       case 'role_up':
         if (user && wsMessage.data.telegram_id === user.telegram_id) {
-          const roleNames: Record<string, string> = {
-            aktivniy: 'Активный',
-            doverenniy: 'Доверенный 🔴',
-          };
-          showToast(`🎉 Новая роль: ${roleNames[wsMessage.data.role] || wsMessage.data.role}`);
+          showToast(`${t('role_up_prefix')} ${t(`role_${wsMessage.data.role}`)}`);
         }
         break;
       case 'studio_ack':

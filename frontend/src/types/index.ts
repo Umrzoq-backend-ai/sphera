@@ -93,5 +93,5 @@ export interface WSMessage {
 // Navigation
 export type Screen = 'anons' | 'efir' | 'profile';
 
-// Language
-export type Language = 'ru' | 'lt' | 'en';
+// Language (re-export from locales)
+export type { Language } from '../locales';
