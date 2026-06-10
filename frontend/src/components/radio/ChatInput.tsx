@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Coffee, Mic, Send } from 'lucide-react';
 import { sendVoiceMessage, uploadFile } from '../../lib/api';
 import { useTranslation } from '../../hooks/useTranslation';
 import type { Language } from '../../types';
@@ -18,7 +19,6 @@ export function ChatInput({ onSendMessage, onToast, city, language, onPointsUpda
   const [pendingVoice, setPendingVoice] = useState<Blob | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = (destination: 'chat' | 'studio') => {
     if (pendingVoice) {
@@ -102,106 +102,79 @@ export function ChatInput({ onSendMessage, onToast, city, language, onPointsUpda
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 20 * 1024 * 1024) {
-      onToast(t('file_too_big'));
-      return;
-    }
-
-    onToast(t('toast_processing'));
-
-    try {
-      const result = await uploadFile(city, file);
-      if (result.points !== undefined) {
-        onPointsUpdate(result.points);
-      }
-      onToast(t('toast_sent_chat'));
-    } catch (error: any) {
-      if (error.status === 402) {
-        const data = await error.response?.json().catch(() => ({}));
-        if (data?.detail?.points !== undefined) {
-          onPointsUpdate(data.detail.points);
-        }
-        onToast(t('toast_limit'));
-      } else if (error.status === 400) {
-        onToast(t('file_unsupported'));
-      } else {
-        onToast(t('file_error'));
-      }
-    } finally {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
   return (
-    <div className="flex-shrink-0 mt-3">
-      <div className="flex items-center gap-2">
+    <div className="shrink-0 mt-4">
+      {/* 3 main buttons like in the image */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {/* Chat button (Tea/Coffee) */}
         <button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-[42px] h-[42px] rounded-full border border-[var(--glass-border)] bg-[rgba(6,10,20,0.7)] text-[17px] flex items-center justify-center"
-          title="Файл"
+          onClick={() => handleSend('chat')}
+          className="flex flex-col items-center justify-center gap-2 h-[100px] rounded-[20px] bg-[rgba(10,20,40,0.6)] border border-[rgba(0,217,255,0.2)] backdrop-blur-sm hover:border-[rgba(0,217,255,0.4)] transition-all active:scale-95"
         >
-          📎
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[rgba(0,217,255,0.2)] to-[rgba(0,136,255,0.1)] flex items-center justify-center">
+            <Coffee className="w-6 h-6 text-[#00d9ff]" />
+          </div>
+          <span className="text-[10px] text-[#8b9cbe] tracking-wider uppercase">
+            {t('send_to_chat') || 'ЧАЙ СМЕРЕННОСТЬ'}
+          </span>
         </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.txt,.zip"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
 
+        {/* Voice button (Microphone) */}
         <button
           onClick={toggleRecording}
-          className={`w-[42px] h-[42px] rounded-full border flex items-center justify-center text-[17px] ${
+          className={`flex flex-col items-center justify-center gap-2 h-[100px] rounded-[20px] backdrop-blur-sm transition-all active:scale-95 ${
             isRecording
-              ? 'bg-[var(--red)] border-[var(--red)] text-white animate-pulse'
-              : 'border-[var(--glass-border)] bg-[rgba(6,10,20,0.7)]'
+              ? 'bg-gradient-to-br from-[#ff4d6d] to-[#c9184a] border-2 border-[#ff4d6d] animate-pulse'
+              : 'bg-[rgba(10,20,40,0.6)] border border-[rgba(0,217,255,0.2)] hover:border-[rgba(0,217,255,0.4)]'
           }`}
-          title="Голосовое"
         >
-          🎤
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+            isRecording 
+              ? 'bg-white/20' 
+              : 'bg-gradient-to-br from-[rgba(0,217,255,0.2)] to-[rgba(0,136,255,0.1)]'
+          }`}>
+            <Mic className={`w-6 h-6 ${isRecording ? 'text-white' : 'text-[#00d9ff]'}`} />
+          </div>
+          <span className={`text-[10px] tracking-wider uppercase ${
+            isRecording ? 'text-white font-bold' : 'text-[#8b9cbe]'
+          }`}>
+            {isRecording ? 'ЗАПИСЬ...' : (t('voice_msg') || 'ГОЛОСОВОЕ СООБЩЕНИЕ')}
+          </span>
         </button>
 
-        <input
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend('chat')}
-          placeholder={t('chat_placeholder')}
-          className="flex-1 min-w-0 bg-[rgba(6,10,20,0.7)] border border-[var(--glass-border)] rounded-[22px] px-4 py-2.5 text-[15px] outline-none focus:border-[var(--accent)]"
-        />
+        {/* Studio/Send button (Paper plane) */}
+        <button
+          onClick={() => handleSend('studio')}
+          className="flex flex-col items-center justify-center gap-2 h-[100px] rounded-[20px] bg-[rgba(10,20,40,0.6)] border border-[rgba(0,217,255,0.2)] backdrop-blur-sm hover:border-[rgba(0,217,255,0.4)] transition-all active:scale-95"
+        >
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[rgba(0,217,255,0.2)] to-[rgba(0,136,255,0.1)] flex items-center justify-center">
+            <Send className="w-6 h-6 text-[#00d9ff]" />
+          </div>
+          <span className="text-[10px] text-[#8b9cbe] tracking-wider uppercase">
+            {t('send_to_studio') || 'ОТПРАВИТЬ'}
+          </span>
+        </button>
       </div>
 
+      {/* Voice preview */}
       {pendingVoice && (
-        <div className="flex items-center justify-between gap-2.5 mt-2.5 px-3.5 py-2.5 rounded-xl bg-[rgba(56,225,255,0.12)] border border-dashed border-[#38e1ff] text-xs text-[#38e1ff]">
+        <div className="flex items-center justify-between gap-2.5 px-4 py-3 rounded-xl bg-[rgba(0,217,255,0.12)] border border-dashed border-[#00d9ff] text-xs text-[#00d9ff] mb-4">
           <span>{t('voice_ready')}</span>
-          <button onClick={() => setPendingVoice(null)} className="text-[#6b7c9e] text-base">
+          <button onClick={() => setPendingVoice(null)} className="text-[#6b7c9e] text-base hover:text-white">
             ✕
           </button>
         </div>
       )}
 
-      <div className="flex gap-2.5 mt-2.5">
-        <button
-          onClick={() => handleSend('chat')}
-          className="flex-1 py-3 px-3 rounded-[14px] border border-[var(--glass-border)] bg-[rgba(6,10,20,0.6)] text-[13px] font-bold tracking-wide"
-        >
-          {t('send_to_chat')}
-        </button>
-        <button
-          onClick={() => handleSend('studio')}
-          className="flex-1 py-3 px-3 rounded-[14px] bg-gradient-to-br from-[#2ea8ff] to-[#38e1ff] text-[#02101f] text-[13px] font-bold tracking-wide"
-          style={{ boxShadow: '0 0 16px var(--glow)' }}
-        >
-          {t('send_to_studio')}
-        </button>
-      </div>
+      {/* Text input (optional, for those who want to type) */}
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleSend('chat')}
+        placeholder={t('chat_placeholder') || 'Напишите сообщение...'}
+        className="w-full bg-[rgba(10,20,40,0.6)] border border-[rgba(0,217,255,0.2)] rounded-[20px] px-5 py-3 text-sm outline-none focus:border-[rgba(0,217,255,0.4)] backdrop-blur-sm"
+      />
     </div>
   );
 }

@@ -1,46 +1,78 @@
+import { useEffect, useRef } from 'react';
+
 interface VisualizerProps {
-  isPlaying: boolean;
+  isActive: boolean;
 }
 
-export function Visualizer({ isPlaying }: VisualizerProps) {
+export function Visualizer({ isActive }: VisualizerProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!isActive) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 100;
+    const bars = 64;
+    let animationId: number;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < bars; i++) {
+        const angle = (Math.PI * 2 * i) / bars;
+        const barHeight = 10 + Math.random() * 30; // Random height for animation
+        
+        const x1 = centerX + Math.cos(angle) * radius;
+        const y1 = centerY + Math.sin(angle) * radius;
+        const x2 = centerX + Math.cos(angle) * (radius + barHeight);
+        const y2 = centerY + Math.sin(angle) * (radius + barHeight);
+
+        // Gradient for each bar
+        const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+        gradient.addColorStop(0, 'rgba(0, 217, 255, 0.8)');
+        gradient.addColorStop(1, 'rgba(0, 136, 255, 0.4)');
+
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00d9ff';
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    };
+  }, [isActive]);
+
+  if (!isActive) {
+    return null;
+  }
+
   return (
-    <div className="relative w-[110px] h-[110px] mx-auto flex items-center justify-center">
-      {/* Rings */}
-      <div className="absolute inset-0 rounded-full border border-[rgba(46,168,255,0.25)] animate-[spin_8s_linear_infinite]"
-           style={{ 
-             boxShadow: '0 0 40px rgba(46,168,255,0.25) inset, 0 0 30px var(--glow)',
-             borderStyle: 'dashed'
-           }} />
-      <div className="absolute inset-4 rounded-full border border-[rgba(46,168,255,0.4)] animate-[spin_14s_linear_infinite_reverse]"
-           style={{ borderStyle: 'dashed' }} />
-      <div className="absolute inset-8 rounded-full border border-[rgba(56,225,255,0.5)]" />
-
-      {/* Core with bars */}
-      <div className="absolute inset-[34px] rounded-full flex items-end justify-center gap-0.5 px-1.5 pb-3 overflow-hidden"
-           style={{
-             background: 'radial-gradient(circle at 50% 40%, rgba(56,225,255,0.35), rgba(10,16,32,0.9) 70%)',
-             boxShadow: '0 0 40px var(--glow)'
-           }}>
-        {Array.from({ length: 16 }).map((_, i) => (
-          <div
-            key={i}
-            className={`w-0.5 rounded-sm bg-gradient-to-t from-[var(--accent)] to-[var(--accent2)] ${
-              isPlaying ? 'animate-[vbar_1s_ease-in-out_infinite]' : 'h-1.5'
-            }`}
-            style={{
-              animationDelay: `${i * 0.06}s`,
-              boxShadow: '0 0 6px var(--accent)'
-            }}
-          />
-        ))}
-      </div>
-
-      <style>{`
-        @keyframes vbar {
-          0%, 100% { height: 6px; }
-          50% { height: 24px; }
-        }
-      `}</style>
-    </div>
+    <canvas
+      ref={canvasRef}
+      width={280}
+      height={280}
+      className="absolute inset-0 rounded-full"
+    />
   );
 }

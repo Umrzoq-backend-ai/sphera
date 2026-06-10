@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AudioPlayer } from './AudioPlayer';
-import { Chat } from './Chat';
+import { ChatInput } from './ChatInput';
 import { GoLiveButton } from './GoLiveButton';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
@@ -21,7 +21,7 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
   const { message, showToast } = useToast();
   const [city] = useState(localStorage.getItem(LS_CITY) || DEFAULT_CITY);
   const [radioStatus, setRadioStatus] = useState<RadioStatus | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [, setMessages] = useState<ChatMessage[]>([]);
 
   const audioPlayer = useAudioPlayer({
     city,
@@ -104,23 +104,25 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
   const level = Math.floor((user?.points || 0) / 100) + 1;
   const broadcasterName = radioStatus?.is_live
     ? radioStatus.broadcaster_type === 'doverenniy'
-      ? `🔴 ${radioStatus.broadcaster_name || 'В ЭФИРЕ'}`
+      ? radioStatus.broadcaster_name || t('live_host')
       : t('ai_host')
     : t('activation');
 
   const isDoverenniy = user?.role === 'doverenniy' || user?.role === 'admin';
 
   return (
-    <div className="flex flex-col gap-2 h-[calc(var(--app-vh)-150px)] min-h-[360px]">
-      <div className="text-center mt-0.5 flex-shrink-0">
-        <div className="text-[15px] font-extrabold tracking-wide">
-          <span>{t('level')}</span> <span>{level}</span>
+    <div className="flex flex-col gap-4 pb-4">
+      {/* Level indicator */}
+      <div className="text-center">
+        <div className="text-base font-extrabold tracking-wide text-white">
+          <span>УРОВЕНЬ {level}</span>
         </div>
-        <div className="text-[10px] tracking-[3px] text-[#6b7c9e] mt-0.5">
-          {t('stream_realtime')}
+        <div className="text-[10px] tracking-[3px] text-[#6b7c9e] mt-1 uppercase">
+          ПОТОК REAL TIME
         </div>
       </div>
 
+      {/* Audio Player - Main circular visualizer */}
       <AudioPlayer
         isPlaying={audioPlayer.isPlaying}
         volume={audioPlayer.volume}
@@ -131,9 +133,8 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
         onVolumeChange={audioPlayer.setVolume}
       />
 
-      <Chat
-        messages={messages}
-        currentUser={user}
+      {/* Chat Input - 3 buttons */}
+      <ChatInput
         onSendMessage={handleSendMessage}
         onToast={showToast}
         city={city}

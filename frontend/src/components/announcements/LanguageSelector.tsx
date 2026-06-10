@@ -1,3 +1,4 @@
+import { Globe } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import type { Language } from '../../types';
 
@@ -9,32 +10,41 @@ interface LanguageSelectorProps {
 export function LanguageSelector({ selectedLang, onLangChange }: LanguageSelectorProps) {
   const { t } = useTranslation();
 
-  const languages: { code: Language; flag: string; label: string }[] = [
-    { code: 'ru', flag: '🇷🇺', label: 'RU' },
-    { code: 'lt', flag: '🇱🇹', label: 'LT' },
-    { code: 'en', flag: '🇬🇧', label: 'EN' },
+  const languages: { code: Language; label: string }[] = [
+    { code: 'ru', label: 'RU' },
+    { code: 'lt', label: 'LT' },
+    { code: 'en', label: 'EN' },
   ];
 
   return (
-    <div className="glass p-3.5 px-4">
-      <div className="text-[11px] tracking-wide text-[#6b7c9e] mb-2.5">
-        {t('anons_lang_hint')}
+    <div className="glass p-3">
+      {/* Compact Header */}
+      <div className="flex items-center gap-2 mb-2.5">
+        <Globe className="w-3.5 h-3.5 text-[#6b7c9e]" strokeWidth={2} />
+        <p className="text-[10px] font-medium text-[#6b7c9e] uppercase tracking-wide">
+          {t('anons_lang_hint')}
+        </p>
       </div>
-      <div className="flex gap-2.5">
+
+      {/* Compact Language Buttons */}
+      <div className="flex gap-2">
         {languages.map((lang) => {
           const isActive = selectedLang === lang.code;
           return (
             <button
               key={lang.code}
               onClick={() => onLangChange(lang.code)}
-              className={`flex-1 py-2.5 px-2 rounded-[14px] border font-semibold text-sm transition-all ${
-                isActive
-                  ? 'bg-gradient-to-br from-[#2ea8ff] to-[#38e1ff] text-[#02101f] border-transparent'
-                  : 'bg-[rgba(6,10,20,0.5)] text-[#dbe9ff] border-[var(--glass-border)]'
-              }`}
-              style={isActive ? { boxShadow: '0 0 16px var(--glow)' } : {}}
+              className={`
+                flex-1 py-2 px-2 rounded-lg font-bold text-xs
+                transition-all duration-200
+                ${
+                  isActive
+                    ? 'bg-linear-to-br from-[#38e1ff] to-[#4a6cf7] text-[#02101f] shadow-[0_0_12px_rgba(56,225,255,0.3)]'
+                    : 'bg-white/5 text-[#8b9bb3] border border-white/10 hover:bg-white/10 hover:text-[#dbe9ff]'
+                }
+              `}
             >
-              {lang.flag} {lang.label}
+              {lang.label}
             </button>
           );
         })}

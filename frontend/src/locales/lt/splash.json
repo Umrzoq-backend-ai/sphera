@@ -1,4 +1,13 @@
 {
+  "brand_title": "INTR",
+  "brand_highlight": "TR",
   "brand_sub": "RADIJAS",
-  "loading": "Kraunama..."
+  "tagline": "Interaktyvi AI radijo platforma",
+  "loading": "Kraunama",
+  "connecting": "Jungiamasi prie platformos",
+  "welcome": "Sveiki atvykę",
+  "features_realtime": "Tiesioginė transliacija",
+  "features_ai": "AI vedėjas",
+  "features_chat": "Gyvas pokalbis",
+  "features_multilang": "Daugiakalbystė"
 }

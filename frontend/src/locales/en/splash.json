@@ -1,4 +1,13 @@
 {
+  "brand_title": "INTR",
+  "brand_highlight": "TR",
   "brand_sub": "RADIO",
-  "loading": "Loading..."
+  "tagline": "Interactive AI Radio Platform",
+  "loading": "Loading",
+  "connecting": "Connecting to platform",
+  "welcome": "Welcome",
+  "features_realtime": "Live Broadcast",
+  "features_ai": "AI Host",
+  "features_chat": "Live Chat",
+  "features_multilang": "Multilingual"
 }
