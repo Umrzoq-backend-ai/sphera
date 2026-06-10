@@ -83,7 +83,33 @@ async def api_root():
 
 # Mini App statik fayllarini serve qilamiz (agar MINIAPP_DIR berilgan bo'lsa).
 # Bu bitta domen/tunnel orqali frontend + backend ishlashini ta'minlaydi.
+# SPA (React Router): noma'lum route'lar uchun index.html qaytaramiz (client-side routing).
 if MINIAPP_DIR and os.path.isdir(MINIAPP_DIR):
+    from fastapi.responses import FileResponse
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    _INDEX = os.path.join(MINIAPP_DIR, "index.html")
+
+    # Statik asset'lar (js/css/img) — to'g'ridan-to'g'ri
+    _ASSETS = os.path.join(MINIAPP_DIR, "assets")
+    if os.path.isdir(_ASSETS):
+        app.mount("/assets", StaticFiles(directory=_ASSETS), name="assets")
+
+    @app.get("/")
+    async def _spa_root():
+        return FileResponse(_INDEX)
+
+    # SPA fallback: API bo'lmagan har qanday GET → index.html
+    @app.exception_handler(StarletteHTTPException)
+    async def _spa_fallback(request, exc):
+        if exc.status_code == 404 and request.method == "GET":
+            accept = request.headers.get("accept", "")
+            if "text/html" in accept:
+                return FileResponse(_INDEX)
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+
+    # Qolgan statik fayllar (index.html, favicon, vite.svg)
     app.mount("/", StaticFiles(directory=MINIAPP_DIR, html=True), name="miniapp")
 else:
     @app.get("/")

@@ -28,14 +28,14 @@ ADMIN_IDS = {
     int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip().isdigit()
 }
 
-# Admin panel URL (admin.html) — MINI_APP_URL dan index.html ni almashtiramiz
+# Admin panel URL — SPA route /admin (React Router). index.html ni kesib /admin qo'shamiz.
 def _admin_url() -> str:
     base = MINI_APP_URL
     for suffix in ("/index.html", "/radio.html"):
         if base.endswith(suffix):
             base = base[: -len(suffix)]
             break
-    return base.rstrip("/") + "/admin.html"
+    return base.rstrip("/") + "/admin"
 
 
 ROLE_NAMES = {
