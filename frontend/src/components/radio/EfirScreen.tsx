@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Signal } from 'lucide-react';
 import { AudioPlayer } from './AudioPlayer';
 import { ChatInput } from './ChatInput';
 import { GoLiveButton } from './GoLiveButton';
@@ -29,7 +30,6 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
     useIcecast: radioStatus?.use_icecast || false,
   });
 
-  // WebSocket connection
   const { send: wsSend } = useWebSocket({
     city,
     onMessage: handleWSMessage,
@@ -75,11 +75,6 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
           setRadioStatus((prev) => prev ? { ...prev, ...wsMessage.data } : null);
         }
         break;
-      case 'role_up':
-        if (user && wsMessage.data.telegram_id === user.telegram_id) {
-          showToast(`${t('role_up_prefix')} ${t(`role_${wsMessage.data.role}`)}`);
-        }
-        break;
       case 'studio_ack':
         onPointsUpdate(wsMessage.data.points);
         showToast(t('toast_sent_studio'));
@@ -97,32 +92,41 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
     }
   }
 
-  const handleSendMessage = useCallback((message: string, destination: 'chat' | 'studio') => {
-    wsSend({ type: destination, message, lang });
+  const handleSendMessage = useCallback((msg: string, destination: 'chat' | 'studio') => {
+    wsSend({ type: destination, message: msg, lang });
   }, [wsSend, lang]);
 
   const level = Math.floor((user?.points || 0) / 100) + 1;
   const broadcasterName = radioStatus?.is_live
     ? radioStatus.broadcaster_type === 'doverenniy'
-      ? radioStatus.broadcaster_name || t('live_host')
+      ? radioStatus.broadcaster_name || '🔴 LIVE'
       : t('ai_host')
     : t('activation');
 
   const isDoverenniy = user?.role === 'doverenniy' || user?.role === 'admin';
 
   return (
-    <div className="flex flex-col gap-4 pb-4">
-      {/* Level indicator */}
-      <div className="text-center">
-        <div className="text-base font-extrabold tracking-wide text-white">
-          <span>УРОВЕНЬ {level}</span>
-        </div>
-        <div className="text-[10px] tracking-[3px] text-[#6b7c9e] mt-1 uppercase">
-          ПОТОК REAL TIME
-        </div>
+    <div className="flex flex-col gap-4">
+      {/* Status badge */}
+      <div className="flex items-center justify-center gap-2">
+        <Signal className="w-3.5 h-3.5 text-[#38e1ff]" strokeWidth={2} />
+        <span className="text-[10px] tracking-[3px] text-[#6b7c9e] uppercase font-medium">
+          {t('stream_realtime')}
+        </span>
       </div>
 
-      {/* Audio Player - Main circular visualizer */}
+      {/* Level indicator */}
+      <div className="glass rounded-2xl px-4 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-[#38e1ff] animate-pulse" style={{ boxShadow: '0 0 8px rgba(56,225,255,0.6)' }} />
+          <span className="text-xs font-bold text-[#dbe9ff]">{t('level')} {level}</span>
+        </div>
+        <span className="text-[10px] text-[#6b7c9e]">
+          {radioStatus?.listeners_count ? `🎧 ${radioStatus.listeners_count}` : ''}
+        </span>
+      </div>
+
+      {/* Audio Player with Orb */}
       <AudioPlayer
         isPlaying={audioPlayer.isPlaying}
         volume={audioPlayer.volume}
@@ -133,7 +137,7 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
         onVolumeChange={audioPlayer.setVolume}
       />
 
-      {/* Chat Input - 3 buttons */}
+      {/* Chat Input */}
       <ChatInput
         onSendMessage={handleSendMessage}
         onToast={showToast}
@@ -142,6 +146,7 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
         onPointsUpdate={onPointsUpdate}
       />
 
+      {/* Go Live */}
       {isDoverenniy && (
         <GoLiveButton city={city} onToast={showToast} />
       )}

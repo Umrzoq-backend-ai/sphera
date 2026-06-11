@@ -1,13 +1,10 @@
 {
   "brand_title": "INTR",
-  "brand_highlight": "TR",
-  "brand_sub": "RADIJAS",
-  "tagline": "Interaktyvi AI radijo platforma",
-  "loading": "Kraunama",
-  "connecting": "Jungiamasi prie platformos",
-  "welcome": "Sveiki atvykę",
-  "features_realtime": "Tiesioginė transliacija",
-  "features_ai": "AI vedėjas",
-  "features_chat": "Gyvas pokalbis",
-  "features_multilang": "Daugiakalbystė"
+  "tagline": "Interaktyvus AI radijas Telegram platformoje",
+  "features_realtime": "Tiesioginis",
+  "features_ai": "DI vedėjas",
+  "features_chat": "Pokalbis",
+  "features_multilang": "3 kalbos",
+  "connecting": "Jungiamasi...",
+  "welcome": "Sveiki"
 }

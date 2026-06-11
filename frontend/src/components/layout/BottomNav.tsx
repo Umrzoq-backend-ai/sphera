@@ -1,5 +1,5 @@
-import { Shield, Activity, Radio, Star, User } from 'lucide-react';
-import { AIOrb } from '../ui/AIOrb';
+import { Megaphone, Radio, User } from 'lucide-react';
+import { useTranslation } from '../../hooks/useTranslation';
 import type { Screen } from '../../types';
 
 interface BottomNavProps {
@@ -8,147 +8,92 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ currentScreen, onNavigate }: BottomNavProps) {
-  const navItems = [
-    { id: 'anons' as Screen, icon: Shield, label: 'Анонсы' },
-    { id: 'stats' as Screen, icon: Activity, label: 'Статистика' },
-    { id: 'efir' as Screen, icon: Radio, label: 'Эфир', isCenter: true },
-    { id: 'favorites' as Screen, icon: Star, label: 'Избранное' },
-    { id: 'profile' as Screen, icon: User, label: 'Профиль' },
+  const { t } = useTranslation();
+
+  const navItems: { id: Screen; icon: typeof Radio; label: string; isCenter?: boolean }[] = [
+    { id: 'anons', icon: Megaphone, label: t('nav_anons') },
+    { id: 'efir', icon: Radio, label: t('nav_efir'), isCenter: true },
+    { id: 'profile', icon: User, label: t('nav_profile') },
   ];
 
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-50"
-      style={{
-        background: 'linear-gradient(180deg, transparent 0%, rgba(6, 10, 20, 0.4) 20%, rgba(6, 10, 20, 0.98) 50%)',
-      }}
-    >
-      <div className="max-w-[520px] mx-auto px-4 py-2 pb-[calc(8px+env(safe-area-inset-bottom))]">
-        {/* Liquid Glass Container */}
-        <div className="relative group">
-          {/* Animated gradient background */}
-          <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-[rgba(0,217,255,0.08)] via-[rgba(10,136,255,0.05)] to-[rgba(0,217,255,0.08)] opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
-          
-          {/* Main liquid glass bar */}
-          <div 
-            className="relative rounded-[28px] p-1.5 overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, rgba(15, 30, 60, 0.7) 0%, rgba(10, 20, 40, 0.85) 50%, rgba(15, 30, 60, 0.7) 100%)',
-              backdropFilter: 'blur(40px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-              boxShadow: `
-                0 8px 32px rgba(0, 0, 0, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05),
-                inset 0 -1px 0 rgba(0, 217, 255, 0.05)
-              `,
-            }}
-          >
-            {/* Liquid shine effect */}
-            <div 
-              className="absolute inset-0 opacity-30"
-              style={{
-                background: 'linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.05) 45%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 55%, transparent 100%)',
-                animation: 'liquid-shine 8s ease-in-out infinite',
-              }}
-            />
-            
-            {/* Top highlight */}
-            <div 
-              className="absolute top-0 left-[10%] right-[10%] h-px"
-              style={{
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
-              }}
-            />
+    <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+      <div
+        className="pointer-events-auto max-w-[460px] mx-auto px-4 pb-[calc(8px+env(safe-area-inset-bottom))] pt-4"
+        style={{
+          background: 'linear-gradient(180deg, transparent 0%, rgba(6,10,20,0.85) 30%, rgba(6,10,20,0.98) 100%)',
+        }}
+      >
+        {/* Glass bar */}
+        <div
+          className="glass rounded-2xl px-2 py-2 flex justify-around items-center"
+          style={{
+            boxShadow: '0 -4px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          {navItems.map((item) => {
+            const isActive = currentScreen === item.id;
+            const Icon = item.icon;
 
-            <div className="relative flex justify-around items-center px-1">
-              {navItems.map((item) => {
-                const isActive = currentScreen === item.id;
-                const Icon = item.icon;
-
-                if (item.isCenter) {
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => onNavigate(item.id)}
-                      className="relative -mt-8 flex flex-col items-center group/center"
-                    >
-                      {/* AI Orb - Siri Style */}
-                      <div className="group-hover/center:scale-105 active:scale-95 transition-transform duration-300">
-                        <AIOrb isActive={isActive} size={64} />
-                      </div>
-                    </button>
-                  );
-                }
-
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => onNavigate(item.id)}
-                    className={`relative flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300 ${
-                      isActive
-                        ? 'bg-[rgba(0,217,255,0.08)]'
-                        : 'hover:bg-[rgba(0,217,255,0.04)]'
+            if (item.isCenter) {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onNavigate(item.id)}
+                  className="relative -mt-7 flex flex-col items-center"
+                >
+                  <div
+                    className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      isActive ? 'scale-105' : ''
                     }`}
-                    style={isActive ? {
-                      boxShadow: 'inset 0 0 20px rgba(0,217,255,0.15), 0 0 10px rgba(0,217,255,0.1)',
-                    } : {}}
+                    style={{
+                      background: 'linear-gradient(135deg, #2ea8ff, #38e1ff)',
+                      boxShadow: isActive
+                        ? '0 0 30px rgba(56,225,255,0.5), 0 0 60px rgba(46,168,255,0.2)'
+                        : '0 0 20px rgba(56,225,255,0.3)',
+                    }}
                   >
-                    {/* Active liquid glow */}
-                    {isActive && (
-                      <div 
-                        className="absolute inset-0 rounded-2xl opacity-50"
-                        style={{
-                          background: 'radial-gradient(ellipse at center, rgba(0,217,255,0.15) 0%, transparent 70%)',
-                        }}
-                      />
-                    )}
-                    
-                    {/* Icon */}
-                    <Icon 
-                      className={`w-6 h-6 transition-all duration-300 ${
-                        isActive ? 'text-[#00d9ff]' : 'text-[#6b7c9e]'
-                      }`}
-                      strokeWidth={isActive ? 2.5 : 2}
-                      style={isActive ? {
-                        filter: 'drop-shadow(0 0 8px rgba(0,217,255,0.6))',
-                      } : {}}
-                    />
-                    
-                    {/* Active indicator - small dot at bottom */}
-                    {isActive && (
-                      <div 
-                        className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-                        style={{
-                          background: 'radial-gradient(circle, rgba(0,217,255,1) 0%, rgba(0,217,255,0.5) 100%)',
-                          boxShadow: '0 0 6px rgba(0,217,255,0.8)',
-                        }}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+                    <Icon className="w-6 h-6 text-[#060a14]" strokeWidth={2.5} />
+                  </div>
+                  <span className="text-[8px] mt-1 text-[#38e1ff] font-bold tracking-wide">
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => onNavigate(item.id)}
+                className="flex flex-col items-center gap-1 py-1.5 px-4 rounded-xl transition-all duration-200"
+              >
+                <Icon
+                  className={`w-5 h-5 transition-colors duration-200 ${
+                    isActive ? 'text-[#38e1ff]' : 'text-[#6b7c9e]'
+                  }`}
+                  strokeWidth={isActive ? 2.2 : 1.8}
+                  style={isActive ? { filter: 'drop-shadow(0 0 6px rgba(56,225,255,0.5))' } : {}}
+                />
+                <span
+                  className={`text-[9px] font-medium tracking-wide transition-colors duration-200 ${
+                    isActive ? 'text-[#38e1ff]' : 'text-[#6b7c9e]'
+                  }`}
+                >
+                  {item.label}
+                </span>
+                {/* Active dot */}
+                {isActive && (
+                  <div
+                    className="w-1 h-1 rounded-full bg-[#38e1ff]"
+                    style={{ boxShadow: '0 0 6px rgba(56,225,255,0.8)' }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
-
-      {/* CSS Animations */}
-      <style>{`
-        @keyframes liquid-shine {
-          0%, 100% { transform: translateX(-100%) skewX(-15deg); }
-          50% { transform: translateX(200%) skewX(-15deg); }
-        }
-        
-        @keyframes pulse-glow {
-          0%, 100% { transform: scale(1); opacity: 0.6; }
-          50% { transform: scale(1.1); opacity: 0.8; }
-        }
-        
-        @keyframes liquid-drop {
-          0%, 100% { transform: translate(-50%, 0) scale(1); }
-          50% { transform: translate(-50%, 2px) scale(0.9, 1.1); }
-        }
-      `}</style>
     </nav>
   );
 }

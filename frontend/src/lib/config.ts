@@ -1,23 +1,16 @@
 // API konfiguratsiyasi
-// Vite environment variables: import.meta.env
 const getApiUrl = () => {
-  // 1. Birinchi navbatda env dan olish
+  // 1. Env dan olish (production build uchun)
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  
-  // 2. Agar env bo'lmasa, port 8080 bo'lsa backend 8001 da deb hisoblaymiz
-  const IS_PORT_8080 = location.port === '8080';
-  if (IS_PORT_8080) {
-    return `http://${location.hostname}:8001`;
-  }
-  
-  // 3. Aks holda same origin
-  return location.origin;
+
+  // 2. Dev rejimda Vite proxy ishlaydi — same origin
+  return '';
 };
 
 export const API_URL = getApiUrl();
-export const WS_URL = import.meta.env.VITE_WS_URL || API_URL.replace(/^http/, 'ws');
+export const WS_URL = import.meta.env.VITE_WS_URL || `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
 export const RADIO_URL = import.meta.env.VITE_RADIO_URL || API_URL;
 
 // LocalStorage keys
@@ -31,5 +24,5 @@ export const DEFAULT_CITY = import.meta.env.VITE_DEFAULT_CITY || 'global';
 
 // Telegram WebApp
 export const getTelegram = () => {
-  return window.Telegram?.WebApp || null;
+  return (window as any).Telegram?.WebApp || null;
 };

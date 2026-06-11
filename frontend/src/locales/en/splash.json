@@ -1,13 +1,10 @@
 {
   "brand_title": "INTR",
-  "brand_highlight": "TR",
-  "brand_sub": "RADIO",
-  "tagline": "Interactive AI Radio Platform",
-  "loading": "Loading",
-  "connecting": "Connecting to platform",
-  "welcome": "Welcome",
-  "features_realtime": "Live Broadcast",
-  "features_ai": "AI Host",
-  "features_chat": "Live Chat",
-  "features_multilang": "Multilingual"
+  "tagline": "Interactive AI radio in Telegram",
+  "features_realtime": "Live stream",
+  "features_ai": "AI host",
+  "features_chat": "Live chat",
+  "features_multilang": "3 languages",
+  "connecting": "Connecting...",
+  "welcome": "Welcome"
 }

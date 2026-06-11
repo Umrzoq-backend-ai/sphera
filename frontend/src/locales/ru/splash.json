@@ -1,13 +1,10 @@
 {
   "brand_title": "INTR",
-  "brand_highlight": "TR",
-  "brand_sub": "RADIO",
-  "tagline": "Интерактивная AI радиоплатформа",
-  "loading": "Загрузка",
-  "connecting": "Подключение к платформе",
-  "welcome": "Добро пожаловать",
+  "tagline": "Интерактивное AI-радио в Telegram",
   "features_realtime": "Прямой эфир",
-  "features_ai": "AI-ведущий",
+  "features_ai": "ИИ-ведущий",
   "features_chat": "Живой чат",
-  "features_multilang": "Мультиязычность"
+  "features_multilang": "3 языка",
+  "connecting": "Подключение...",
+  "welcome": "Добро пожаловать"
 }

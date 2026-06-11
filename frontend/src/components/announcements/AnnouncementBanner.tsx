@@ -1,4 +1,4 @@
-import { FileText } from 'lucide-react';
+import { Megaphone } from 'lucide-react';
 import type { Announcement } from '../../types';
 
 interface AnnouncementBannerProps {
@@ -6,38 +6,29 @@ interface AnnouncementBannerProps {
 }
 
 export function AnnouncementBanner({ announcement }: AnnouncementBannerProps) {
-  const hasImage = announcement.image_url;
-  const hasEmoji = announcement.emoji && !hasImage;
-
   return (
-    <div className="glass p-3 hover:bg-white/10 transition-all duration-200">
-      <div className="flex gap-3 items-start">
-        {/* Compact Icon/Image */}
-        <div className="shrink-0">
-          {hasImage ? (
-            <div
-              className="w-12 h-12 rounded-lg bg-cover bg-center border border-white/10"
-              style={{ backgroundImage: `url('${announcement.image_url}')` }}
-            />
-          ) : hasEmoji ? (
-            <div className="w-12 h-12 rounded-lg bg-linear-to-br from-[#38e1ff]/10 to-[#4a6cf7]/10 border border-[#38e1ff]/20 flex items-center justify-center text-xl">
-              {announcement.emoji}
-            </div>
-          ) : (
-            <div className="w-12 h-12 rounded-lg bg-linear-to-br from-[#38e1ff]/10 to-[#4a6cf7]/10 border border-[#38e1ff]/20 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-[#38e1ff]" strokeWidth={2} />
-            </div>
-          )}
-        </div>
+    <div className="glass rounded-2xl flex gap-3.5 p-3.5 items-center hover:border-[rgba(56,225,255,0.25)] transition-all duration-200">
+      <div
+        className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${
+          announcement.image_url ? 'bg-cover bg-center' : 'bg-[rgba(56,225,255,0.08)]'
+        }`}
+        style={
+          announcement.image_url
+            ? { backgroundImage: `url('${announcement.image_url}')` }
+            : {}
+        }
+      >
+        {!announcement.image_url && (
+          <Megaphone className="w-6 h-6 text-[#38e1ff]" strokeWidth={1.8} />
+        )}
+      </div>
 
-        {/* Compact Content */}
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-[#dbe9ff] mb-1 leading-tight">
-            {announcement.title}
-          </h3>
-          <p className="text-xs text-[#8b9bb3] leading-relaxed">
-            {announcement.text}
-          </p>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-bold text-[#dbe9ff] mb-0.5 truncate">
+          {announcement.title}
+        </div>
+        <div className="text-[11px] text-[#6b7c9e] leading-relaxed line-clamp-2">
+          {announcement.text}
         </div>
       </div>
     </div>

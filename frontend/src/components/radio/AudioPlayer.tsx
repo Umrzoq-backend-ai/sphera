@@ -7,8 +7,6 @@ interface AudioPlayerProps {
   broadcasterName: string;
   userId: number;
   listenersCount?: number;
-  currentTime?: number;
-  duration?: number;
   onTogglePlay: () => void;
   onVolumeChange: (volume: number) => void;
 }
@@ -18,88 +16,58 @@ export function AudioPlayer({
   volume,
   broadcasterName,
   userId,
-  listenersCount = 0,
-  currentTime = 48,
-  duration = 180,
   onTogglePlay,
   onVolumeChange,
 }: AudioPlayerProps) {
-  const minutes = Math.floor(currentTime / 60);
-  const seconds = currentTime % 60;
-  const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
   return (
-    <div className="flex flex-col items-center gap-6 my-6">
-      {/* Main circular player */}
-      <div className="relative">
-        {/* Outer glow ring */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#00d9ff] to-[#0088ff] opacity-20 blur-2xl animate-pulse" />
-        
-        {/* Main circle with glass effect */}
-        <div className="relative w-[280px] h-[280px] rounded-full bg-gradient-to-br from-[rgba(0,217,255,0.1)] to-[rgba(0,136,255,0.05)] backdrop-blur-xl border-2 border-[rgba(0,217,255,0.3)] flex items-center justify-center">
-          {/* Inner glow */}
-          <div className="absolute inset-4 rounded-full bg-gradient-to-br from-[rgba(0,217,255,0.15)] to-transparent" />
-          
-          {/* Visualizer */}
-          {isPlaying && (
-            <div className="absolute inset-0">
-              <Visualizer isActive={isPlaying} />
-            </div>
+    <div className="flex flex-col items-center gap-4">
+      {/* Orb + play button */}
+      <div className="relative flex items-center justify-center">
+        <Visualizer isPlaying={isPlaying} />
+
+        {/* Play/Pause floating over orb */}
+        <button
+          onClick={onTogglePlay}
+          className="absolute z-10 w-14 h-14 rounded-full glass flex items-center justify-center transition-all active:scale-90 hover:border-[rgba(56,225,255,0.4)]"
+          style={{
+            boxShadow: isPlaying
+              ? '0 0 30px rgba(56,225,255,0.4), inset 0 0 15px rgba(56,225,255,0.1)'
+              : '0 0 20px rgba(46,168,255,0.2)',
+          }}
+        >
+          {isPlaying ? (
+            <Pause className="w-6 h-6 text-[#38e1ff]" strokeWidth={2.5} />
+          ) : (
+            <Play className="w-6 h-6 text-[#38e1ff] ml-0.5" strokeWidth={2.5} />
           )}
-          
-          {/* Play/Pause button */}
-          <button
-            onClick={onTogglePlay}
-            className="relative z-10 w-20 h-20 rounded-full bg-gradient-to-br from-[#00d9ff] to-[#0088ff] flex items-center justify-center shadow-[0_0_30px_rgba(0,217,255,0.6)] hover:shadow-[0_0_40px_rgba(0,217,255,0.8)] transition-all active:scale-95"
-          >
-            {isPlaying ? (
-              <Pause className="w-10 h-10 text-[#0a0e1a] fill-current" />
-            ) : (
-              <Play className="w-10 h-10 text-[#0a0e1a] fill-current ml-1" />
-            )}
-          </button>
-        </div>
+        </button>
       </div>
 
-      {/* Info section */}
-      <div className="text-center space-y-2 w-full max-w-[320px]">
-        {/* User ID */}
-        <div className="text-xs text-[#6b7c9e] tracking-wider">
+      {/* Broadcaster info */}
+      <div className="text-center">
+        <div className="text-[10px] text-[#6b7c9e] tracking-wider">
           ID: {userId}
         </div>
-        
-        {/* Broadcaster name */}
-        <div className="text-lg font-bold text-[#00d9ff] tracking-wide text-glow">
+        <div className="text-sm font-bold text-[#38e1ff] text-glow mt-0.5">
           {broadcasterName}
-        </div>
-        
-        {/* Track title */}
-        <div className="text-sm text-[#8b9cbe] tracking-wide">
-          ТЕМУЩИЙ ХИТ (НАЗВАНИЕ)
-        </div>
-        
-        {/* Time and status */}
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <div className="text-3xl font-bold text-white tracking-wider">
-            {timeStr}
-          </div>
-        </div>
-        <div className="text-[10px] text-[#6b7c9e] tracking-[3px] uppercase">
-          ПОТОК АКТИВЕН
         </div>
       </div>
 
       {/* Volume control */}
-      <div className="w-full max-w-[280px] flex items-center gap-3 px-4">
-        <Volume2 className="w-5 h-5 text-[#00d9ff]" />
+      <div className="w-full max-w-[260px] glass px-4 py-2.5 rounded-2xl flex items-center gap-3">
+        <Volume2 className="w-4 h-4 text-[#38e1ff] shrink-0" strokeWidth={1.8} />
         <input
           type="range"
           min="0"
           max="100"
           value={volume}
           onChange={(e) => onVolumeChange(Number(e.target.value))}
-          className="flex-1 h-1 rounded-full bg-[rgba(107,124,158,0.3)] appearance-none cursor-pointer"
+          className="flex-1 h-1 rounded-full appearance-none outline-none cursor-pointer"
+          style={{
+            background: `linear-gradient(90deg, #38e1ff 0%, #38e1ff ${volume}%, rgba(46,168,255,0.15) ${volume}%, rgba(46,168,255,0.15) 100%)`,
+          }}
         />
+        <span className="text-[10px] text-[#6b7c9e] w-7 text-right">{volume}%</span>
       </div>
     </div>
   );
