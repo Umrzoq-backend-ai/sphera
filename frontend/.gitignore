@@ -27,3 +27,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Virtual environment
+.venv/
+
+# PostgreSQL data
+.pgdata/
+
+# Binaries
+bin/

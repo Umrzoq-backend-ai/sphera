@@ -10,7 +10,7 @@ const getApiUrl = () => {
 };
 
 export const API_URL = getApiUrl();
-export const WS_URL = import.meta.env.VITE_WS_URL || `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
+export const WS_URL = import.meta.env.VITE_WS_URL || `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.hostname}:8001`;
 export const RADIO_URL = import.meta.env.VITE_RADIO_URL || API_URL;
 
 // LocalStorage keys

@@ -92,7 +92,7 @@ export interface WSMessage {
 }
 
 // Navigation
-export type Screen = 'anons' | 'efir' | 'profile';
+export type Screen = 'anons' | 'efir' | 'profile' | 'stats' | 'favorites';
 
 // Language (re-export from locales)
 export type { Language } from '../locales';

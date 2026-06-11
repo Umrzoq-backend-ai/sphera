@@ -1,5 +1,6 @@
 import { Megaphone, Radio, User } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
+import { SiriOrb } from '../ui/SiriOrb';
 import type { Screen } from '../../types';
 
 interface BottomNavProps {
@@ -37,28 +38,12 @@ export function BottomNav({ currentScreen, onNavigate }: BottomNavProps) {
 
             if (item.isCenter) {
               return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id)}
-                  className="relative -mt-7 flex flex-col items-center"
-                >
-                  <div
-                    className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${
-                      isActive ? 'scale-105' : ''
-                    }`}
-                    style={{
-                      background: 'linear-gradient(135deg, #2ea8ff, #38e1ff)',
-                      boxShadow: isActive
-                        ? '0 0 30px rgba(56,225,255,0.5), 0 0 60px rgba(46,168,255,0.2)'
-                        : '0 0 20px rgba(56,225,255,0.3)',
-                    }}
-                  >
-                    <Icon className="w-6 h-6 text-[#060a14]" strokeWidth={2.5} />
-                  </div>
-                  <span className="text-[8px] mt-1 text-[#38e1ff] font-bold tracking-wide">
-                    {item.label}
-                  </span>
-                </button>
+                <div key={item.id} className="relative -mt-7">
+                  <SiriOrb 
+                    isActive={isActive} 
+                    onClick={() => onNavigate(item.id)}
+                  />
+                </div>
               );
             }
 
@@ -66,7 +51,7 @@ export function BottomNav({ currentScreen, onNavigate }: BottomNavProps) {
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className="flex flex-col items-center gap-1 py-1.5 px-4 rounded-xl transition-all duration-200"
+                className="flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all duration-200"
               >
                 <Icon
                   className={`w-5 h-5 transition-colors duration-200 ${
@@ -75,20 +60,6 @@ export function BottomNav({ currentScreen, onNavigate }: BottomNavProps) {
                   strokeWidth={isActive ? 2.2 : 1.8}
                   style={isActive ? { filter: 'drop-shadow(0 0 6px rgba(56,225,255,0.5))' } : {}}
                 />
-                <span
-                  className={`text-[9px] font-medium tracking-wide transition-colors duration-200 ${
-                    isActive ? 'text-[#38e1ff]' : 'text-[#6b7c9e]'
-                  }`}
-                >
-                  {item.label}
-                </span>
-                {/* Active dot */}
-                {isActive && (
-                  <div
-                    className="w-1 h-1 rounded-full bg-[#38e1ff]"
-                    style={{ boxShadow: '0 0 6px rgba(56,225,255,0.8)' }}
-                  />
-                )}
               </button>
             );
           })}

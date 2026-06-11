@@ -1,4 +1,4 @@
-import { User as UserIcon, Globe, Zap } from 'lucide-react';
+import { Globe, Zap } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import type { User } from '../../types';
 
@@ -22,12 +22,6 @@ export function ProfileScreen({ user }: ProfileScreenProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-1">
-        <UserIcon className="w-4.5 h-4.5 text-[#38e1ff]" strokeWidth={2} />
-        <h2 className="text-base font-bold text-[#dbe9ff]">{t('profile_title')}</h2>
-      </div>
-
       {/* Balance card */}
       <div
         className="glass rounded-2xl p-5 text-center"

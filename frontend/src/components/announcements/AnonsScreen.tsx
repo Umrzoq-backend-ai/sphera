@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Megaphone, Headphones, MessageSquare, Mic, Globe } from 'lucide-react';
+import { Headphones, MessageSquare, Mic } from 'lucide-react';
 import { LanguageSelector } from './LanguageSelector';
 import { AnnouncementBanner } from './AnnouncementBanner';
 import { getAnnouncements, updateLanguage, updateBroadcastLang } from '../../lib/api';
@@ -59,9 +59,6 @@ export function AnonsScreen({ user, onUserUpdate }: AnonsScreenProps) {
         isLoaded ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      {/* Section Header */}
-      <SectionHeader title={t('anons_title')} subtitle={t('anons_sub')} />
-
       {/* Language Selector */}
       <LanguageSelector selectedLang={lang} onLangChange={handleLangChange} />
 
@@ -93,20 +90,6 @@ export function AnonsScreen({ user, onUserUpdate }: AnonsScreenProps) {
 }
 
 /* ─── Sub-components ─────────────────────────────────────────────── */
-
-function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="flex flex-col gap-1 px-1">
-      <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-xl bg-[rgba(56,225,255,0.08)] flex items-center justify-center">
-          <Megaphone className="w-4 h-4 text-[#38e1ff]" strokeWidth={2} />
-        </div>
-        <h2 className="text-base font-bold text-[#dbe9ff] text-glow">{title}</h2>
-      </div>
-      <p className="text-xs text-[#6b7c9e] pl-10.5 leading-relaxed">{subtitle}</p>
-    </div>
-  );
-}
 
 interface FeatureItem {
   icon: typeof Headphones;
