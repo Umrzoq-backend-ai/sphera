@@ -21,6 +21,7 @@ from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.core.database import db
 from app.core import redis as redis_client
+from app.core.middleware import RequestLoggingMiddleware
 from app.api.routers import auth, users, chat, admin, news
 
 setup_logging(debug=settings.debug)
@@ -64,6 +65,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request logging
+app.add_middleware(RequestLoggingMiddleware)
 
 # Routers
 app.include_router(auth.router)

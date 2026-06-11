@@ -23,18 +23,21 @@ class Database:
 
     async def connect(self, max_retries: int = 5, retry_delay: float = 2.0) -> None:
         """Pool yaratadi. Ulanish bo'lmasa retry qiladi."""
+        connect_kwargs = {
+            "host": settings.db_host,
+            "port": settings.db_port,
+            "user": settings.db_user,
+            "database": settings.db_name,
+            "min_size": settings.db_pool_min,
+            "max_size": settings.db_pool_max,
+            "command_timeout": 60,
+        }
+        if settings.db_pass:
+            connect_kwargs["password"] = settings.db_pass
+
         for attempt in range(1, max_retries + 1):
             try:
-                self.pool = await asyncpg.create_pool(
-                    host=settings.db_host,
-                    port=settings.db_port,
-                    user=settings.db_user,
-                    password=settings.db_pass,
-                    database=settings.db_name,
-                    min_size=settings.db_pool_min,
-                    max_size=settings.db_pool_max,
-                    command_timeout=60,
-                )
+                self.pool = await asyncpg.create_pool(**connect_kwargs)
                 log.info(
                     "Database connected (pool: %d-%d)",
                     settings.db_pool_min, settings.db_pool_max,
