@@ -89,7 +89,7 @@ qiziqarli radio segmenti yarat: shahar haqida, kayfiyat haqida, musiqa haqida.
 async def fetch_listener_messages(client: httpx.AsyncClient, city: str) -> list[dict]:
     """AI efirga olib chiqish uchun oxirgi tinglovchi murojaatlarini oladi."""
     try:
-        resp = await client.get(
+        resp = await client.post(
             f"{INTERNAL_API_URL}/messages/recent/{city}",
             params={"limit": 5},
             timeout=10,

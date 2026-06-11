@@ -20,13 +20,13 @@ from app.core.models import (
     OkResponse,
 )
 from app.core.dependencies import require_role, decode_token
+from app.core.internal_auth import require_internal_key
 from app.core.state import get_state, VALID_CITIES, AUDIO_DIR
+from app.core.constants import ROLE_LEVELS
 from app.core.ws_manager import manager
 from app.services import broadcast
 
 router = APIRouter(prefix="/radio", tags=["radio"])
-
-ROLE_LEVELS = {"slusatel": 0, "aktivniy": 1, "doverenniy": 2, "admin": 99}
 
 ICECAST_HOST = os.getenv("ICECAST_HOST", "localhost")
 ICECAST_PORT = int(os.getenv("ICECAST_PORT", "8000"))
@@ -67,7 +67,7 @@ async def radio_status(city: str = Query(...)):
     return RadioStatus(**st.to_dict(listeners_count=manager.listeners_count(city)))
 
 
-@router.post("/status", response_model=OkResponse)
+@router.post("/status", response_model=OkResponse, dependencies=[Depends(require_internal_key)])
 async def update_radio_status(payload: RadioStatusUpdate):
     if payload.city not in VALID_CITIES:
         raise HTTPException(status_code=400, detail="Unknown city")
@@ -99,9 +99,9 @@ async def update_radio_status(payload: RadioStatusUpdate):
     return OkResponse()
 
 
-@router.post("/segment", response_model=SegmentOut)
+@router.post("/segment", response_model=SegmentOut, dependencies=[Depends(require_internal_key)])
 async def register_segment(payload: SegmentRegister):
-    """radio-host yangi AI ovoz segmentini ro'yxatga oladi."""
+    """radio-host yangi AI ovoz segmentini ro'yxatga oladi. Internal API key required."""
     if payload.city not in VALID_CITIES:
         raise HTTPException(status_code=400, detail="Unknown city")
 
