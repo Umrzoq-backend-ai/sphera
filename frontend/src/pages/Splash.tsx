@@ -38,7 +38,8 @@ export function Splash() {
       localStorage.setItem(LS_CITY, DEFAULT_CITY);
 
       setTimeout(() => {
-        navigate('/radio');
+        // Mini App ochilganda har doim: til tanlash → yangilik → platforma (TZ)
+        navigate('/welcome');
       }, 1200);
     }
 

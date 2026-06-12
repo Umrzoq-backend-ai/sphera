@@ -13,7 +13,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
-dist/
 build/
 .pytest_cache/
 
@@ -25,3 +24,11 @@ bin/cloudflared
 # Media
 *.mp3
 *.wav
+
+# Frontend dev (dist Railway deploy uchun backend/static da saqlanadi)
+frontend/dist/
+frontend/node_modules/
+
+# Test fayllar
+.test*.txt
+.final_test.txt

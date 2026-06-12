@@ -8,13 +8,18 @@
 
 import asyncio
 import logging
+import os
+import uuid
 from datetime import datetime
 
 from fastapi import (
     APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query,
+    UploadFile, File,
 )
+from fastapi.responses import FileResponse
 
 from app.core.database import db
+from app.core.config import settings
 from app.core.models import ChatMessageRequest, ChatMessageOut, OkResponse
 from app.core.dependencies import get_current_user, decode_token
 from app.core.ws_manager import manager
@@ -23,6 +28,9 @@ from app.services import points as points_service
 log = logging.getLogger("chat")
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+# Ovozli xabar uchun ruxsat etilgan formatlar
+_ALLOWED_AUDIO = {".webm", ".ogg", ".mp3", ".m4a", ".wav", ".oga"}
 
 
 def _display_name(user: dict) -> str:
@@ -48,7 +56,7 @@ async def get_chat_history(limit: int = 50):
     for r in rows:
         voice_url = None
         if r["message_type"] == "voice" and r["audio_file_path"]:
-            voice_url = f"/messages/voice/{r['audio_file_path']}"
+            voice_url = f"/chat/voice/{r['audio_file_path']}"
         out.append(ChatMessageOut(
             id=r["id"],
             username=r["username"],
@@ -101,6 +109,72 @@ async def send_message(
     })
 
     return OkResponse(detail={"points": str(spent["points"])})
+
+
+# ============ Ovozli xabar (chatga) — 0.005 point ============
+@router.post("/voice", response_model=OkResponse)
+async def send_voice(
+    audio_file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
+    """Chatga ovozli xabar yuborish — 0.005 point sarflanadi."""
+    # Format tekshiruvi
+    ext = os.path.splitext(audio_file.filename or "")[1].lower() or ".webm"
+    if ext not in _ALLOWED_AUDIO:
+        raise HTTPException(status_code=400, detail="Unsupported audio format")
+
+    # Point sarflash (0.005)
+    spent = await points_service.spend_voice(user["id"])
+    if not spent["ok"]:
+        raise HTTPException(
+            status_code=402,
+            detail={"error": "insufficient_points", "points": str(spent["points"])},
+        )
+
+    # Faylni saqlash
+    os.makedirs(settings.upload_dir, exist_ok=True)
+    fname = f"voice_{uuid.uuid4().hex}{ext}"
+    fpath = os.path.join(settings.upload_dir, fname)
+    content = await audio_file.read()
+    if len(content) > settings.max_upload_mb * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large")
+    with open(fpath, "wb") as f:
+        f.write(content)
+
+    row = await db.fetchrow(
+        """
+        INSERT INTO chat_messages (user_id, message, message_type, audio_file_path)
+        VALUES ($1, '', 'voice', $2)
+        RETURNING id, created_at
+        """,
+        user["id"], fname,
+    )
+
+    voice_url = f"/chat/voice/{fname}"
+    await manager.broadcast("global", {
+        "type": "chat",
+        "data": {
+            "id": row["id"],
+            "username": user["username"],
+            "display_name": _display_name(user),
+            "message": "",
+            "message_type": "voice",
+            "voice_url": voice_url,
+            "created_at": row["created_at"].isoformat(),
+        },
+    })
+
+    return OkResponse(detail={"points": str(spent["points"]), "voice_url": voice_url})
+
+
+@router.get("/voice/{filename}")
+async def get_voice(filename: str):
+    """Ovozli xabar faylini qaytaradi."""
+    safe = os.path.basename(filename)
+    fpath = os.path.join(settings.upload_dir, safe)
+    if not os.path.isfile(fpath):
+        raise HTTPException(status_code=404, detail="Voice not found")
+    return FileResponse(fpath, media_type="audio/webm")
 
 
 @router.websocket("/ws")

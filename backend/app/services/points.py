@@ -12,9 +12,32 @@ import logging
 from decimal import Decimal
 
 from app.core.database import db
-from app.core.constants import COST_TEXT_MESSAGE, COST_VOICE_MESSAGE, INITIAL_POINTS
+from app.core.constants import (
+    COST_TEXT_MESSAGE, COST_VOICE_MESSAGE, INITIAL_POINTS, level_for_points,
+)
 
 log = logging.getLogger("points")
+
+
+async def recompute_level(user_id: int) -> int:
+    """Point miqdoriga qarab levelni avtomatik yangilaydi.
+
+    Level 3 ga yetganda role = broadcaster (ведущий).
+    """
+    points = await get_balance(user_id)
+    level = level_for_points(points)
+    role = "broadcaster" if level >= 3 else "listener"
+    # admin rolini saqlab qolamiz
+    await db.execute(
+        """
+        UPDATE users
+        SET level = $2,
+            role = CASE WHEN role = 'admin' THEN 'admin' ELSE $3 END
+        WHERE id = $1
+        """,
+        user_id, level, role,
+    )
+    return level
 
 
 async def get_balance(user_id: int) -> Decimal:
@@ -104,6 +127,10 @@ async def transfer(from_user_id: int, to_user_id: int, amount: Decimal) -> dict:
         to_user_id, amount, f"Received from user #{from_user_id}", from_user_id,
     )
 
+    # Level avtomatik qayta hisoblash (ikkala foydalanuvchi uchun)
+    await recompute_level(from_user_id)
+    await recompute_level(to_user_id)
+
     return {"ok": True, "points": row["points"]}
 
 
@@ -167,4 +194,6 @@ async def add_points_admin(user_id: int, amount: Decimal) -> dict:
         """,
         user_id, amount,
     )
-    return {"ok": True, "points": row["points"]}
+    # Level avtomatik qayta hisoblash
+    new_level = await recompute_level(user_id)
+    return {"ok": True, "points": row["points"], "level": new_level}

@@ -20,7 +20,7 @@ export function useWebSocket({ city, onMessage, onOpen, onClose, onError }: UseW
     const token = getToken();
     if (!token) return;
 
-    const ws = new WebSocket(`${WS_URL}/chat/${city}/ws?token=${encodeURIComponent(token)}`);
+    const ws = new WebSocket(`${WS_URL}/chat/ws?token=${encodeURIComponent(token)}`);
     wsRef.current = ws;
 
     ws.onopen = () => {

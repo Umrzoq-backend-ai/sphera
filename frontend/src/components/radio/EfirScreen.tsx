@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { MessageSquare, Mic, Send, X, Loader } from 'lucide-react';
 import { AudioPlayer } from './AudioPlayer';
 import { ChatMessages } from './ChatMessages';
@@ -6,7 +6,7 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { useToast } from '../../hooks/useToast';
 import { Toast } from '../ui/Toast';
-import { getRadioStatus, getChatHistory } from '../../lib/api';
+import { getRadioStatus, getChatHistory, sendVoiceMessage } from '../../lib/api';
 import { DEFAULT_CITY, LS_CITY } from '../../lib/config';
 import { useTranslation } from '../../hooks/useTranslation';
 import type { User, RadioStatus, ChatMessage } from '../../types';
@@ -190,8 +190,42 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
     wsSend({ type: destination, message: msg, lang });
   }, [wsSend, lang]);
 
-  const handleVoiceMessage = () => {
-    showToast('Голосовое сообщение в разработке');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+
+  const handleVoiceMessage = async () => {
+    // Yozilayotgan bo'lsa — to'xtatamiz
+    if (isRecording && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      mediaRecorderRef.current = rec;
+      audioChunksRef.current = [];
+      rec.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (blob.size < 800) { showToast(t('toast_short')); return; }
+        try {
+          const res = await sendVoiceMessage(city, blob, 'chat', lang);
+          if (res?.points !== undefined) onPointsUpdate(Number(res.points));
+          showToast(t('toast_sent_chat'));
+        } catch (err: any) {
+          if (err.status === 402) showToast(t('toast_limit'));
+          else showToast('⚠️');
+        }
+      };
+      rec.start();
+      setIsRecording(true);
+      showToast(t('toast_recording'));
+    } catch {
+      showToast(t('toast_mic_denied'));
+    }
   };
 
   const handleSendToStudio = () => {
@@ -201,7 +235,7 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
     }
   };
 
-  const level = Math.floor((user?.points || 0) / 100) + 1;
+  const level = user?.level || 1;
   const broadcasterName = radioStatus?.is_live
     ? radioStatus.broadcaster_type === 'doverenniy'
       ? radioStatus.broadcaster_name || '🔴 LIVE'

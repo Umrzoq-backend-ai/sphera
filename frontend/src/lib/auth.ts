@@ -1,7 +1,7 @@
-import { API_URL, LS_TOKEN, LS_ROLE, LS_CITY } from './config';
+import { API_URL, LS_TOKEN, LS_LANG } from './config';
 import { getTgUser } from './telegram';
 
-// Authenticate with backend
+// Backend bilan autentifikatsiya (real Telegram ID orqali)
 export async function authenticate() {
   const user = getTgUser();
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
@@ -20,24 +20,21 @@ export async function authenticate() {
 
   const data = await resp.json();
   localStorage.setItem(LS_TOKEN, data.token);
-  localStorage.setItem(LS_ROLE, data.role);
-  if (data.city) localStorage.setItem(LS_CITY, data.city);
+  // Tanlangan til bo'lsa saqlaymiz (interfeys uchun)
+  if (data.language) localStorage.setItem(LS_LANG, data.language);
 
   return data;
 }
 
-// Get stored token
 export function getToken(): string | null {
   return localStorage.getItem(LS_TOKEN);
 }
 
-// Get auth headers
 export function authHeaders(): Record<string, string> {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// Check if user is authenticated
 export function isAuthenticated(): boolean {
   return !!getToken();
 }

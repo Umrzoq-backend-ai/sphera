@@ -1,12 +1,16 @@
-// User va Profile
+// User va Profile (v3 backend — eski maydonlar moslik uchun optional)
 export interface User {
+  id: number;
   telegram_id: number;
   username: string | null;
-  full_name: string | null;
-  role: 'slusatel' | 'aktivniy' | 'doverenniy' | 'admin';
+  display_name?: string | null;
+  full_name?: string | null;
+  role: 'listener' | 'broadcaster' | 'admin' | 'slusatel' | 'aktivniy' | 'doverenniy';
   points: number;
+  level?: number;
+  level_name?: string;
   language: 'ru' | 'lt' | 'en';
-  broadcast_lang: 'ru' | 'lt' | 'en';
+  broadcast_lang?: 'ru' | 'lt' | 'en';
   city?: string;
   psychotype?: Psychotype;
 }
@@ -17,31 +21,62 @@ export interface Psychotype {
   key_topic: string;
 }
 
+// Point so'rovi (menga kelgan)
+export interface PointsRequest {
+  id: number;
+  from_user_id: number;
+  from_display_name: string | null;
+  to_user_id: number;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  message: string;
+  created_at: string;
+}
+
+// Point paketi
+export interface PointPackage {
+  id: number;
+  points_amount: number;
+  price_eur: number;
+  label: string;
+}
+
+// Yangilik
+export interface News {
+  id: number;
+  title: string;
+  body: string;
+  image_url: string;
+  created_at: string;
+}
+
 // Chat Messages
 export interface ChatMessage {
   id: number;
-  telegram_id: number;
+  telegram_id?: number;
   username: string | null;
+  display_name?: string | null;
   message: string | null;
+  message_type?: string;
   voice_url: string | null;
-  file_url: string | null;
-  file_name: string | null;
-  duration_sec: number | null;
-  kind: 'chat' | 'studio' | 'ai';
+  file_url?: string | null;
+  file_name?: string | null;
+  duration_sec?: number | null;
+  kind?: 'chat' | 'studio' | 'ai';
   created_at: string;
 }
 
 // Radio Status
 export interface RadioStatus {
   is_live: boolean;
-  broadcaster_type: 'ai' | 'doverenniy' | null;
+  broadcaster_type: string | null;
   broadcaster_name: string | null;
-  use_icecast: boolean;
-  stream_url: string | null;
+  use_icecast?: boolean;
+  stream_url?: string | null;
   listeners_count?: number;
 }
 
-// Announcement Banner
+// Announcement Banner (news bannerlari)
 export interface Announcement {
   emoji: string;
   title: string;
@@ -84,6 +119,8 @@ export type WSMessageType =
   | 'limit_exceeded'
   | 'studio_denied'
   | 'balance'
+  | 'error'
+  | 'pong'
   | 'ping';
 
 export interface WSMessage {
@@ -94,5 +131,4 @@ export interface WSMessage {
 // Navigation
 export type Screen = 'anons' | 'efir' | 'profile' | 'stats' | 'favorites';
 
-// Language (re-export from locales)
 export type { Language } from '../locales';

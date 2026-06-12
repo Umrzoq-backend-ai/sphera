@@ -1,4 +1,4 @@
-import { Play, Pause, Volume2 } from 'lucide-react';
+import { Play, Volume2 } from 'lucide-react';
 import { Visualizer } from './Visualizer';
 
 interface AudioPlayerProps {
@@ -21,27 +21,21 @@ export function AudioPlayer({
 }: AudioPlayerProps) {
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* Orb + play button */}
-      <div className="relative flex items-center justify-center">
+      {/* Orb — bosilganda play/pause (markazda tugma yo'q, faqat jonli to'lqin) */}
+      <button
+        onClick={onTogglePlay}
+        className="relative flex items-center justify-center active:scale-95 transition-transform"
+        aria-label={isPlaying ? 'pause' : 'play'}
+      >
         <Visualizer isPlaying={isPlaying} />
 
-        {/* Play/Pause floating over orb */}
-        <button
-          onClick={onTogglePlay}
-          className="absolute z-10 w-14 h-14 rounded-full glass flex items-center justify-center transition-all active:scale-90 hover:border-[rgba(56,225,255,0.4)]"
-          style={{
-            boxShadow: isPlaying
-              ? '0 0 30px rgba(56,225,255,0.4), inset 0 0 15px rgba(56,225,255,0.1)'
-              : '0 0 20px rgba(46,168,255,0.2)',
-          }}
-        >
-          {isPlaying ? (
-            <Pause className="w-6 h-6 text-[#38e1ff]" strokeWidth={2.5} />
-          ) : (
+        {/* Play belgisi faqat to'xtatilganda (markazda kichik, yarim shaffof) */}
+        {!isPlaying && (
+          <span className="absolute z-10 w-12 h-12 rounded-full flex items-center justify-center bg-[rgba(6,10,20,0.45)] backdrop-blur-sm">
             <Play className="w-6 h-6 text-[#38e1ff] ml-0.5" strokeWidth={2.5} />
-          )}
-        </button>
-      </div>
+          </span>
+        )}
+      </button>
 
       {/* Broadcaster info */}
       <div className="text-center">

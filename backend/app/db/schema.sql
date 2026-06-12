@@ -102,9 +102,12 @@ INSERT INTO point_packages (points_amount, price_eur, label) VALUES
     (5000, 25.00, '5000 points')
 ON CONFLICT DO NOTHING;
 
--- ============ Seed data ============
+-- ============ Seed data (har til = o'sha davlat haqida yangilik) ============
 INSERT INTO news (language, title, body, sort_order) VALUES
-    ('ru', 'Добро пожаловать в INTRA GROUP!', 'Интерактивная радиоплатформа нового поколения. Слушайте, общайтесь и становитесь ведущим!', 1),
-    ('en', 'Welcome to INTRA GROUP!', 'Next-generation interactive radio platform. Listen, chat and become a broadcaster!', 1),
-    ('lt', 'Sveiki atvykę į INTRA GROUP!', 'Naujos kartos interaktyvi radijo platforma. Klausykitės, bendraukite ir tapkite vedėju!', 1)
+    ('ru', 'Россия сегодня', 'Москва — сердце России. Кремль, Красная площадь и Большой театр встречают гостей со всего мира. Сегодня в стране проходят культурные фестивали и спортивные события.', 1),
+    ('ru', 'Культура и наука России', 'Россия — родина Пушкина, Чайковского и Гагарина. Российские учёные продолжают вносить вклад в космос и технологии.', 2),
+    ('en', 'United Kingdom Today', 'London — the heart of the UK. Big Ben, Buckingham Palace and the Thames welcome visitors worldwide. Cultural festivals and football matches fill the calendar today.', 1),
+    ('en', 'British Culture & Science', 'The UK gave the world Shakespeare, The Beatles and Newton. British universities remain among the best in the world.', 2),
+    ('lt', 'Lietuva šiandien', 'Vilnius — Lietuvos širdis. Senamiestis, Gedimino pilis ir Trakų ežerai laukia svečių iš viso pasaulio. Šiandien šalyje vyksta kultūros festivaliai.', 1),
+    ('lt', 'Lietuvos kultūra ir mokslas', 'Lietuva — krepšinio šalis ir Čiurlionio tėvynė. Lietuvių mokslininkai garsėja lazerių technologijomis visame pasaulyje.', 2)
 ON CONFLICT DO NOTHING;
