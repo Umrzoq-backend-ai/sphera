@@ -7,6 +7,7 @@ export interface User {
   points: number;
   language: 'ru' | 'lt' | 'en';
   broadcast_lang: 'ru' | 'lt' | 'en';
+  city?: string;
   psychotype?: Psychotype;
 }
 
@@ -91,7 +92,7 @@ export interface WSMessage {
 }
 
 // Navigation
-export type Screen = 'anons' | 'efir' | 'profile';
+export type Screen = 'anons' | 'efir' | 'profile' | 'stats' | 'favorites';
 
 // Language (re-export from locales)
 export type { Language } from '../locales';

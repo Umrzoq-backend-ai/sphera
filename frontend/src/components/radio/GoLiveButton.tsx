@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Radio } from 'lucide-react';
 import { WS_URL } from '../../lib/config';
 import { getToken } from '../../lib/auth';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -33,35 +34,23 @@ export function GoLiveButton({ city, onToast }: GoLiveButtonProps) {
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          
-          if (msg.type === 'broadcast_unavailable') {
-            onToast(t('broadcast_unavailable'));
-            stopBroadcast();
-          } else if (msg.type === 'broadcast_busy') {
-            onToast(t('broadcast_busy'));
-            stopBroadcast();
-          } else if (msg.type === 'broadcast_started') {
+          if (msg.type === 'broadcast_started') {
             setIsLive(true);
-            onToast(t('broadcast_started'));
+            onToast('🔴 LIVE!');
             startRecorder(stream, ws);
-          } else if (msg.type === 'broadcast_error') {
-            onToast(t('broadcast_error'));
+          } else if (msg.type === 'broadcast_busy') {
+            onToast('⚠️ Broadcast busy');
+            stopBroadcast();
+          } else if (msg.type === 'broadcast_unavailable') {
+            onToast('🔇 Icecast required');
             stopBroadcast();
           }
-        } catch (e) {
-          // Binary data, ignore
-        }
+        } catch { /* binary */ }
       };
 
-      ws.onclose = () => {
-        if (isLive) stopBroadcast();
-      };
-
-      ws.onerror = () => {
-        onToast(t('broadcast_connection_error'));
-      };
-    } catch (e) {
-      console.error('Broadcast error:', e);
+      ws.onclose = () => { if (isLive) stopBroadcast(); };
+      ws.onerror = () => onToast(t('send_error'));
+    } catch {
       onToast(t('toast_mic_denied'));
     }
   };
@@ -70,20 +59,13 @@ export function GoLiveButton({ city, onToast }: GoLiveButtonProps) {
     try {
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
       recorderRef.current = recorder;
-
       recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-          e.data.arrayBuffer().then((buf) => {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(buf);
-            }
-          });
+        if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+          e.data.arrayBuffer().then((buf) => ws.send(buf));
         }
       };
-
       recorder.start(500);
-    } catch (e) {
-      console.error('Recorder error:', e);
+    } catch {
       const recorder = new MediaRecorder(stream);
       recorderRef.current = recorder;
       recorder.start(500);
@@ -92,31 +74,9 @@ export function GoLiveButton({ city, onToast }: GoLiveButtonProps) {
 
   const stopBroadcast = () => {
     setIsLive(false);
-    
-    try {
-      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-        recorderRef.current.stop();
-      }
-    } catch (e) {
-      console.error('Stop recorder error:', e);
-    }
-
-    try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
-    } catch (e) {
-      console.error('Stop stream error:', e);
-    }
-
-    try {
-      if (wsRef.current && wsRef.current.readyState <= WebSocket.OPEN) {
-        wsRef.current.close();
-      }
-    } catch (e) {
-      console.error('Close WS error:', e);
-    }
-
+    try { recorderRef.current?.state !== 'inactive' && recorderRef.current?.stop(); } catch {}
+    try { streamRef.current?.getTracks().forEach((t) => t.stop()); } catch {}
+    try { wsRef.current?.readyState! <= WebSocket.OPEN && wsRef.current?.close(); } catch {}
     recorderRef.current = null;
     streamRef.current = null;
     wsRef.current = null;
@@ -125,12 +85,18 @@ export function GoLiveButton({ city, onToast }: GoLiveButtonProps) {
   return (
     <button
       onClick={toggleLive}
-      className={`w-full py-3.5 px-4 rounded-2xl border font-bold text-sm tracking-wide flex-shrink-0 ${
+      className={`w-full py-3.5 rounded-2xl font-bold text-sm tracking-wide flex items-center justify-center gap-2 transition-all active:scale-[0.97] ${
         isLive
-          ? 'bg-gradient-to-br from-[var(--red)] to-[#b91d36] text-white animate-pulse'
-          : 'border-[rgba(255,77,109,0.5)] bg-gradient-to-br from-[rgba(255,77,109,0.18)] to-[rgba(255,77,109,0.06)] text-[#ff9fb0]'
+          ? 'bg-[#ff4d6d] text-white animate-pulse'
+          : 'glass border-[rgba(255,77,109,0.3)] text-[#ff9fb0] hover:border-[rgba(255,77,109,0.5)]'
       }`}
+      style={
+        isLive
+          ? { boxShadow: '0 0 24px rgba(255,77,109,0.4)' }
+          : {}
+      }
     >
+      <Radio className="w-4 h-4" strokeWidth={2} />
       {isLive ? t('end_live') : t('go_live')}
     </button>
   );

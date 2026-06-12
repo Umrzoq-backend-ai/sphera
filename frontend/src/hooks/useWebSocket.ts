@@ -27,6 +27,11 @@ export function useWebSocket({ city, onMessage, onOpen, onClose, onError }: UseW
       console.log('WebSocket connected');
       onOpen?.();
 
+      // Clear any existing ping interval
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+      }
+
       // Ping every 30s to keep connection alive
       pingIntervalRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {

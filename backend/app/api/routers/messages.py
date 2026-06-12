@@ -14,6 +14,7 @@ from app.core.models import (
 )
 from app.core.dependencies import get_current_user, require_role
 from app.core.state import VALID_CITIES
+from app.core.constants import ROLE_LEVELS
 from app.services import whisper_stt, psychotype, points
 from app.core.ws_manager import manager
 
@@ -57,13 +58,17 @@ async def _process_voice_background(path: str, user_id: int, city: str, lang: st
     TZ v2.0: аудиофайл СОХРАНЯЕТСЯ (audio_file_path), чтобы голос можно было
     прослушать в чате (как в Telegram). Для чата STT не нужен.
     """
+    import logging
+    log = logging.getLogger("messages.voice_bg")
+
     if not to_studio:
         return  # обычный голос в чат — файл просто остаётся для прослушивания
 
     transcript = ""
     try:
         transcript = await whisper_stt.transcribe(path)
-    except Exception:
+    except Exception as exc:
+        log.warning("STT failed for user_id=%d: %s", user_id, exc)
         transcript = ""
 
     if transcript.strip():
@@ -77,8 +82,8 @@ async def _process_voice_background(path: str, user_id: int, city: str, lang: st
             )
             analysis = await psychotype.analyze(transcript)
             await _save_psychotype(user_id, analysis)
-        except Exception:
-            pass
+        except Exception as exc:
+            log.error("Failed to save studio message for user_id=%d: %s", user_id, exc)
 
 
 @router.post("/voice", response_model=MessageResponse)
@@ -102,7 +107,6 @@ async def voice_message(
     to_studio = destination == "studio"
 
     # Роль-гейт для студии (босс: студия — серьёзная заявка)
-    ROLE_LEVELS = {"slusatel": 0, "aktivniy": 1, "doverenniy": 2, "admin": 99}
     if to_studio and ROLE_LEVELS.get(user["role"], 0) < ROLE_LEVELS["aktivniy"]:
         raise HTTPException(status_code=403, detail="Studio requires aktivniy+ role")
 
@@ -284,9 +288,12 @@ async def text_message(
     )
 
 
-@router.get("/recent/{city}")
+@router.post("/recent/{city}")
 async def recent_messages(city: str, limit: int = 5):
-    """ИИ agregatsiya uchun: muhokama qilinmagan oxirgi murojaatlar."""
+    """ИИ agregatsiya uchun: muhokama qilinmagan oxirgi murojaatlar.
+
+    POST ishlatiladi chunki so'rov statusni o'zgartiradi (side-effect).
+    """
     if city not in VALID_CITIES:
         raise HTTPException(status_code=400, detail="Unknown city")
 

@@ -1,59 +1,37 @@
-"""Points_Service — avtomatik ball berish va rol ko'tarish (PDF talabi).
+"""Points service — INTRA GROUP v3.0.
 
-Ball qoidalari:
-  - murojaat (appeal): +10
-  - chat xabar: +1  (kunlik max 20)
-  - tinglash (listen): 1 daqiqaga +1  (kunlik max 30)
-
-Rol chegaralari:
-  slusatel=0, aktivniy=50, doverenniy=200
-Ball faqat ko'tariladi (pasaymaydi), admin avtomatik o'zgarmaydi.
+Kasr son bilan (NUMERIC(12,4)):
+- Text xabar: -0.001 point
+- Ovozli xabar: -0.005 point
+- Transfer: bir foydalanuvchidan ikkinchisiga
+- So'rov: "menga point bering" request
+- Sotib olish: EUR → points
 """
 
+import logging
+from decimal import Decimal
+
 from app.core.database import db
-import os
+from app.core.constants import COST_TEXT_MESSAGE, COST_VOICE_MESSAGE, INITIAL_POINTS
 
-# Ball qiymatlari
-POINTS_APPEAL = 10
-POINTS_CHAT = 1
-POINTS_LISTEN = 1
-
-# Kunlik limitlar
-CAP_CHAT_PER_DAY = 20
-CAP_LISTEN_PER_DAY = 30
-
-# Rol chegaralari (yuqoridan pastga)
-ROLE_THRESHOLDS = [("doverenniy", 200), ("aktivniy", 50), ("slusatel", 0)]
-ROLE_LEVELS = {"slusatel": 0, "aktivniy": 1, "doverenniy": 2, "admin": 99}
-
-DAILY_CAP = {"chat": CAP_CHAT_PER_DAY, "listen": CAP_LISTEN_PER_DAY}
-
-# ============ Cost-модель (multilang-studio-broadcast) ============
-# Стоимость действий, списываемых с баланса (Поинты).
-# Босс: чат тоже с лимитом; студия дороже (голос дороже из-за STT).
-COST = {
-    "chat": int(os.getenv("COST_CHAT", "1")),                  # текст в чат
-    "chat_voice": int(os.getenv("COST_CHAT_VOICE", "1")),      # голос в чат
-    "studio": int(os.getenv("COST_STUDIO", "1")),             # текст в студию
-    "studio_voice": int(os.getenv("COST_STUDIO_VOICE", "2")),  # голос в студию (STT)
-}
-
-# Стартовый баланс новым пользователям (чтобы могли участвовать; админ пополняет)
-INITIAL_POINTS = int(os.getenv("INITIAL_POINTS", "50"))
+log = logging.getLogger("points")
 
 
-async def spend(user_id: int, event_type: str, cost: int) -> dict:
-    """Списывает лимит (Поинты) за действие. Атомарно, без ухода в минус.
+async def get_balance(user_id: int) -> Decimal:
+    """Joriy balans."""
+    val = await db.fetchval("SELECT points FROM users WHERE id = $1", user_id)
+    return Decimal(str(val)) if val else Decimal("0")
 
-    Возвращает:
-      {"ok": True,  "points": новый_остаток}       — успешно списано
-      {"ok": False, "points": текущий, "reason": "insufficient_limit"} — не хватило
+
+async def spend(user_id: int, event_type: str, cost: Decimal) -> dict:
+    """Point sarflash (xabar yuborish uchun). Atomik, manfiy bo'lmaydi.
+
+    Returns: {"ok": True/False, "points": yangi_balans}
     """
     if cost <= 0:
-        cur = await db.fetchval("SELECT points FROM users WHERE id = $1", user_id)
-        return {"ok": True, "points": int(cur or 0)}
+        bal = await get_balance(user_id)
+        return {"ok": True, "points": bal}
 
-    # Атомарное условное списание: уменьшаем только если хватает баланса
     row = await db.fetchrow(
         """
         UPDATE users SET points = points - $2
@@ -63,100 +41,130 @@ async def spend(user_id: int, event_type: str, cost: int) -> dict:
         user_id, cost,
     )
     if row is None:
-        cur = await db.fetchval("SELECT points FROM users WHERE id = $1", user_id)
-        return {"ok": False, "points": int(cur or 0), "reason": "insufficient_limit"}
+        bal = await get_balance(user_id)
+        return {"ok": False, "points": bal, "reason": "insufficient_points"}
 
     await db.execute(
-        "INSERT INTO points_history (user_id, event_type, amount) VALUES ($1, $2, $3)",
-        user_id, event_type, -cost,
+        """
+        INSERT INTO points_transactions (user_id, amount, event_type, description)
+        VALUES ($1, $2, $3, $4)
+        """,
+        user_id, -cost, event_type, f"Spent {cost} for {event_type}",
     )
     return {"ok": True, "points": row["points"]}
 
 
-def role_for_points(points: int) -> str:
-    """Berilgan ballga mos eng yuqori (admin bo'lmagan) rol."""
-    for role, threshold in ROLE_THRESHOLDS:
-        if points >= threshold:
-            return role
-    return "slusatel"
+async def spend_text(user_id: int) -> dict:
+    """Matn xabar uchun point sarflash."""
+    return await spend(user_id, "text_message", Decimal(str(COST_TEXT_MESSAGE)))
 
 
-async def _today_awarded(user_id: int, event_type: str) -> int:
-    val = await db.fetchval(
-        """
-        SELECT COALESCE(SUM(amount), 0) FROM points_history
-        WHERE user_id = $1 AND event_type = $2
-          AND created_at >= date_trunc('day', (now() AT TIME ZONE 'utc'))
-        """,
-        user_id,
-        event_type,
-    )
-    return int(val or 0)
+async def spend_voice(user_id: int) -> dict:
+    """Ovozli xabar uchun point sarflash."""
+    return await spend(user_id, "voice_message", Decimal(str(COST_VOICE_MESSAGE)))
 
 
-async def award(user_id: int, event_type: str, amount: int) -> dict:
-    """Foydalanuvchiga ball qo'shadi (kunlik limit bilan), rolni tekshiradi.
-
-    Qaytaradi: {points, role, promoted, new_role, awarded}
-    """
-    # Kunlik limit
-    cap = DAILY_CAP.get(event_type)
-    if cap is not None:
-        already = await _today_awarded(user_id, event_type)
-        remaining = max(0, cap - already)
-        amount = min(amount, remaining)
-
+async def transfer(from_user_id: int, to_user_id: int, amount: Decimal) -> dict:
+    """Bir foydalanuvchidan ikkinchisiga point o'tkazish."""
     if amount <= 0:
-        row = await db.fetchrow(
-            "SELECT points, role, telegram_id FROM users WHERE id = $1", user_id
-        )
-        if row is None:
-            return {"points": 0, "role": "slusatel", "promoted": False,
-                    "new_role": "slusatel", "awarded": 0}
-        return {"points": row["points"], "role": row["role"], "promoted": False,
-                "new_role": row["role"], "awarded": 0}
+        return {"ok": False, "reason": "invalid_amount"}
+    if from_user_id == to_user_id:
+        return {"ok": False, "reason": "cannot_transfer_to_self"}
 
-    # Atomik ball qo'shish
+    # Atomik: avval olib, keyin qo'shish
     row = await db.fetchrow(
         """
-        UPDATE users SET points = points + $2
-        WHERE id = $1
-        RETURNING points, role, telegram_id
+        UPDATE users SET points = points - $2
+        WHERE id = $1 AND points >= $2
+        RETURNING points
         """,
-        user_id,
-        amount,
+        from_user_id, amount,
     )
     if row is None:
-        return {"points": 0, "role": "slusatel", "promoted": False,
-                "new_role": "slusatel", "awarded": 0}
+        return {"ok": False, "reason": "insufficient_points"}
 
     await db.execute(
-        "INSERT INTO points_history (user_id, event_type, amount) VALUES ($1, $2, $3)",
-        user_id,
-        event_type,
-        amount,
+        "UPDATE users SET points = points + $2 WHERE id = $1",
+        to_user_id, amount,
     )
 
-    promoted, new_role = await _maybe_promote(user_id, row["points"], row["role"])
+    # Tarix yozish
+    await db.execute(
+        """
+        INSERT INTO points_transactions (user_id, amount, event_type, description, related_user_id)
+        VALUES ($1, $2, 'transfer_out', $3, $4)
+        """,
+        from_user_id, -amount, f"Transfer to user #{to_user_id}", to_user_id,
+    )
+    await db.execute(
+        """
+        INSERT INTO points_transactions (user_id, amount, event_type, description, related_user_id)
+        VALUES ($1, $2, 'transfer_in', $3, $4)
+        """,
+        to_user_id, amount, f"Received from user #{from_user_id}", from_user_id,
+    )
 
-    return {
-        "points": row["points"],
-        "role": new_role,
-        "promoted": promoted,
-        "new_role": new_role,
-        "awarded": amount,
-    }
+    return {"ok": True, "points": row["points"]}
 
 
-async def _maybe_promote(user_id: int, points: int, current_role: str):
-    """Ball yetarli bo'lsa rolni ko'taradi. admin tegmaydi, pasaymaydi."""
-    if current_role == "admin":
-        return False, current_role
+async def create_request(from_user_id: int, to_user_id: int, amount: Decimal, message: str = "") -> dict:
+    """Point so'rovi yaratish (from so'rayapti, to berishi kerak)."""
+    if amount <= 0:
+        return {"ok": False, "reason": "invalid_amount"}
 
-    target = role_for_points(points)
-    if ROLE_LEVELS.get(target, 0) > ROLE_LEVELS.get(current_role, 0):
+    row = await db.fetchrow(
+        """
+        INSERT INTO points_requests (from_user_id, to_user_id, amount, message)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+        """,
+        from_user_id, to_user_id, amount, message,
+    )
+    return {"ok": True, "request_id": row["id"]}
+
+
+async def decide_request(request_id: int, deciding_user_id: int, approve: bool) -> dict:
+    """Point so'rovini tasdiqlash yoki rad etish."""
+    req = await db.fetchrow(
+        "SELECT * FROM points_requests WHERE id = $1 AND status = 'pending'",
+        request_id,
+    )
+    if req is None:
+        return {"ok": False, "reason": "request_not_found"}
+    if req["to_user_id"] != deciding_user_id:
+        return {"ok": False, "reason": "not_your_request"}
+
+    if approve:
+        # Point o'tkazish
+        result = await transfer(req["to_user_id"], req["from_user_id"], req["amount"])
+        if not result["ok"]:
+            return result
         await db.execute(
-            "UPDATE users SET role = $1 WHERE id = $2", target, user_id
+            "UPDATE points_requests SET status = 'approved', decided_at = NOW() WHERE id = $1",
+            request_id,
         )
-        return True, target
-    return False, current_role
+    else:
+        await db.execute(
+            "UPDATE points_requests SET status = 'rejected', decided_at = NOW() WHERE id = $1",
+            request_id,
+        )
+
+    return {"ok": True, "status": "approved" if approve else "rejected"}
+
+
+async def add_points_admin(user_id: int, amount: Decimal) -> dict:
+    """Admin tomonidan point qo'shish."""
+    row = await db.fetchrow(
+        "UPDATE users SET points = points + $2 WHERE id = $1 RETURNING points",
+        user_id, amount,
+    )
+    if row is None:
+        return {"ok": False, "reason": "user_not_found"}
+    await db.execute(
+        """
+        INSERT INTO points_transactions (user_id, amount, event_type, description)
+        VALUES ($1, $2, 'gift', 'Admin gift')
+        """,
+        user_id, amount,
+    )
+    return {"ok": True, "points": row["points"]}

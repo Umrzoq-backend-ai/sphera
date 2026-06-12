@@ -1,8 +1,13 @@
 import { useState, useCallback } from 'react';
 import { t as translate, getLang, setLang as setI18nLang } from '../lib/i18n';
-import type { Language, Namespace } from '../lib/i18n';
+import type { Language } from '../types';
 
-export function useTranslation(ns?: Namespace) {
+/**
+ * Hook for translations.
+ * Optional namespace parameter is accepted for compatibility but ignored —
+ * all keys are merged into a flat structure per language.
+ */
+export function useTranslation(_ns?: string) {
   const [lang, setLangState] = useState<Language>(getLang());
 
   const setLang = useCallback((newLang: Language) => {
@@ -10,9 +15,9 @@ export function useTranslation(ns?: Namespace) {
     setLangState(newLang);
   }, []);
 
-  const t = useCallback((key: string) => {
-    return translate(key, ns);
-  }, [lang, ns]);
+  const t = useCallback((key: string): string => {
+    return translate(key);
+  }, [lang]);
 
   return { t, lang, setLang };
 }

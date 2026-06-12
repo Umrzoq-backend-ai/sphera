@@ -11,6 +11,31 @@ export async function getMe(): Promise<User> {
   return resp.json();
 }
 
+export async function updateProfile(data: {
+  username?: string;
+  full_name?: string;
+  language?: string;
+  broadcast_lang?: string;
+  city?: string;
+}) {
+  const resp = await fetch(`${API_URL}/users/me`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(data),
+  });
+  if (!resp.ok) throw new Error('Failed to update profile');
+  return resp.json();
+}
+
+export async function deleteProfile() {
+  const resp = await fetch(`${API_URL}/users/me`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error('Failed to delete profile');
+  return resp.json();
+}
+
 export async function updateLanguage(language: string) {
   const resp = await fetch(`${API_URL}/users/me/language`, {
     method: 'PUT',
@@ -150,7 +175,7 @@ export async function getDrafts(status = 'pending'): Promise<Draft[]> {
   return resp.json();
 }
 
-export async function updateDraft(id: number, script: string) {
+export async function editDraft(id: number, script: string) {
   const resp = await fetch(`${API_URL}/admin/drafts/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },

@@ -1,3 +1,4 @@
+import { Play, Pause, Volume2 } from 'lucide-react';
 import { Visualizer } from './Visualizer';
 
 interface AudioPlayerProps {
@@ -15,55 +16,58 @@ export function AudioPlayer({
   volume,
   broadcasterName,
   userId,
-  listenersCount,
   onTogglePlay,
   onVolumeChange,
 }: AudioPlayerProps) {
-
   return (
-    <div className="flex-shrink-0 flex flex-col gap-2">
-      <Visualizer isPlaying={isPlaying} />
+    <div className="flex flex-col items-center gap-4">
+      {/* Orb + play button */}
+      <div className="relative flex items-center justify-center">
+        <Visualizer isPlaying={isPlaying} />
 
+        {/* Play/Pause floating over orb */}
+        <button
+          onClick={onTogglePlay}
+          className="absolute z-10 w-14 h-14 rounded-full glass flex items-center justify-center transition-all active:scale-90 hover:border-[rgba(56,225,255,0.4)]"
+          style={{
+            boxShadow: isPlaying
+              ? '0 0 30px rgba(56,225,255,0.4), inset 0 0 15px rgba(56,225,255,0.1)'
+              : '0 0 20px rgba(46,168,255,0.2)',
+          }}
+        >
+          {isPlaying ? (
+            <Pause className="w-6 h-6 text-[#38e1ff]" strokeWidth={2.5} />
+          ) : (
+            <Play className="w-6 h-6 text-[#38e1ff] ml-0.5" strokeWidth={2.5} />
+          )}
+        </button>
+      </div>
+
+      {/* Broadcaster info */}
       <div className="text-center">
-        <div className="text-[11px] text-[#6b7c9e] tracking-wide">
-          ID: <span>{userId || '—'}</span>
+        <div className="text-[10px] text-[#6b7c9e] tracking-wider">
+          ID: {userId}
         </div>
-        <div className="text-[15px] font-extrabold mt-0.5" style={{ textShadow: '0 0 14px rgba(46,168,255,0.25)' }}>
+        <div className="text-sm font-bold text-[#38e1ff] text-glow mt-0.5">
           {broadcasterName}
         </div>
       </div>
 
-      <div className="glass flex items-center gap-3 px-3.5 py-2">
-        <button
-          onClick={onTogglePlay}
-          className="w-10 h-10 rounded-full border border-[var(--glass-border)] flex items-center justify-center text-[#02101f] text-base flex-shrink-0"
-          style={{
-            background: 'radial-gradient(circle at 40% 35%, var(--accent2), var(--accent))',
-            boxShadow: '0 0 20px var(--glow)'
-          }}
-        >
-          {isPlaying ? '⏸' : '▶'}
-        </button>
-
-        <span className="text-[15px] text-[#6b7c9e]">🔊</span>
-
+      {/* Volume control */}
+      <div className="w-full max-w-[260px] glass px-4 py-2.5 rounded-2xl flex items-center gap-3">
+        <Volume2 className="w-4 h-4 text-[#38e1ff] shrink-0" strokeWidth={1.8} />
         <input
           type="range"
           min="0"
           max="100"
           value={volume}
           onChange={(e) => onVolumeChange(Number(e.target.value))}
-          className="flex-1 h-1 rounded-full appearance-none outline-none"
+          className="flex-1 h-1 rounded-full appearance-none outline-none cursor-pointer"
           style={{
-            background: `linear-gradient(90deg, var(--accent) 0%, var(--accent) ${volume}%, rgba(46,168,255,0.15) ${volume}%, rgba(46,168,255,0.15) 100%)`
+            background: `linear-gradient(90deg, #38e1ff 0%, #38e1ff ${volume}%, rgba(46,168,255,0.15) ${volume}%, rgba(46,168,255,0.15) 100%)`,
           }}
         />
-
-        {listenersCount !== undefined && (
-          <span className="text-[11px] text-[#6b7c9e] flex-shrink-0">
-            🎧 {listenersCount}
-          </span>
-        )}
+        <span className="text-[10px] text-[#6b7c9e] w-7 text-right">{volume}%</span>
       </div>
     </div>
   );

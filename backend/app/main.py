@@ -1,97 +1,118 @@
+"""INTRA GROUP — Production-grade API entry point (v3.0).
+
+Yangi TZ:
+- Til tanlash (RU/EN/LT) → Yangilik → Platforma
+- Kasr point tizimi (0.001 per text, 0.005 per voice)
+- Level tizimi (1-3)
+- Point transfer/request/purchase
+"""
+
 import os
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 
+from app.core.config import settings
+from app.core.logging_config import setup_logging
 from app.core.database import db
-from app.api.routers import auth, cities, users, radio, messages, chat, admin
-from app.core.state import set_valid_cities
+from app.core import redis as redis_client
+from app.core.middleware import RequestLoggingMiddleware
+from app.api.routers import auth, users, chat, admin, news
 
-MINIAPP_DIR = os.getenv("MINIAPP_DIR", "")
+setup_logging(debug=settings.debug)
+log = logging.getLogger("app")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Application lifecycle."""
+    log.info("Starting %s v%s", settings.app_name, settings.app_version)
+
+    # 1. Database (retry bilan)
     await db.connect()
-    # Bazadan amaldagi shaharlar ro'yxatini yuklaymiz
-    try:
-        rows = await db.fetch("SELECT slug FROM cities WHERE is_active = true")
-        set_valid_cities([r["slug"] for r in rows])
-    except Exception:
-        pass
-    # Guruhga bog'liqlik konfiguratsiyasi ogohlantirishi
-    from app.services import membership
-    if not membership.is_enabled():
-        print("[WARN] Group membership check DISABLED (dev mode). "
-              "Production: set COMMUNITY_CHAT_ID and DISABLE_GROUP_CHECK=false.")
-    else:
-        print(f"[INFO] Community-bound enabled for chat {membership.COMMUNITY_CHAT_ID}")
 
-    # ИИ-agregatsiya fon jarayoni (chat → draft → moderator)
-    from app.services import aggregator
-    from app.core.state import VALID_CITIES
-    agg_task = asyncio.create_task(
-        aggregator.aggregation_loop(lambda: VALID_CITIES)
-    )
+    # 2. Redis (graceful fallback)
+    await redis_client.connect()
 
-    # Uzluksiz multiyazык Icecast oqimi (USE_ICECAST=true bo'lганда)
-    from app.services import continuous
-    await continuous.start()
-
+    log.info("Application started successfully")
     yield
 
-    agg_task.cancel()
-    await continuous.stop()
+    # Shutdown
+    log.info("Shutting down...")
+    await redis_client.disconnect()
     await db.disconnect()
+    log.info("Shutdown complete")
 
 
-app = FastAPI(title="Sfera5 Radio API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="INTRA GROUP API",
+    version="3.0.0",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+)
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=settings.origins_list,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Request logging
+app.add_middleware(RequestLoggingMiddleware)
+
+# Routers
 app.include_router(auth.router)
-app.include_router(cities.router)
 app.include_router(users.router)
-app.include_router(radio.router)
-app.include_router(messages.router)
 app.include_router(chat.router)
+app.include_router(news.router)
 app.include_router(admin.router)
 
 
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    log.error("Unhandled: %s %s — %s", request.method, request.url.path, exc, exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+# Health
 @app.get("/health")
 async def health():
-    try:
-        await db.fetchval("SELECT 1")
-        return {"status": "healthy"}
-    except Exception as exc:  # noqa: BLE001
-        return {"status": "unhealthy", "error": str(exc)}
+    return {"status": "ok"}
+
+
+@app.get("/health/ready")
+async def readiness():
+    db_ok = await db.health_check()
+    redis_ok = redis_client.is_available()
+    return {
+        "status": "ready" if (db_ok and redis_ok) else "degraded",
+        "checks": {"database": db_ok, "redis": redis_ok},
+    }
 
 
 @app.get("/api")
 async def api_root():
-    return {"service": "Sfera5 Radio API", "status": "ok"}
+    return {"service": "INTRA GROUP", "version": "3.0.0", "status": "ok"}
 
 
-# Mini App statik fayllarini serve qilamiz (agar MINIAPP_DIR berilgan bo'lsa).
-# Bu bitta domen/tunnel orqali frontend + backend ishlashini ta'minlaydi.
-# SPA (React Router): noma'lum route'lar uchun index.html qaytaramiz (client-side routing).
-if MINIAPP_DIR and os.path.isdir(MINIAPP_DIR):
+# Mini App statik fayllar (SPA fallback bilan)
+if settings.miniapp_dir and os.path.isdir(settings.miniapp_dir):
     from fastapi.responses import FileResponse
     from starlette.exceptions import HTTPException as StarletteHTTPException
 
-    _INDEX = os.path.join(MINIAPP_DIR, "index.html")
+    _INDEX = os.path.join(settings.miniapp_dir, "index.html")
+    _ASSETS = os.path.join(settings.miniapp_dir, "assets")
 
-    # Statik asset'lar (js/css/img) — to'g'ridan-to'g'ri
-    _ASSETS = os.path.join(MINIAPP_DIR, "assets")
     if os.path.isdir(_ASSETS):
         app.mount("/assets", StaticFiles(directory=_ASSETS), name="assets")
 
@@ -99,19 +120,16 @@ if MINIAPP_DIR and os.path.isdir(MINIAPP_DIR):
     async def _spa_root():
         return FileResponse(_INDEX)
 
-    # SPA fallback: API bo'lmagan har qanday GET → index.html
     @app.exception_handler(StarletteHTTPException)
     async def _spa_fallback(request, exc):
         if exc.status_code == 404 and request.method == "GET":
             accept = request.headers.get("accept", "")
             if "text/html" in accept:
                 return FileResponse(_INDEX)
-        from fastapi.responses import JSONResponse
         return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
-    # Qolgan statik fayllar (index.html, favicon, vite.svg)
-    app.mount("/", StaticFiles(directory=MINIAPP_DIR, html=True), name="miniapp")
+    app.mount("/", StaticFiles(directory=settings.miniapp_dir, html=True), name="miniapp")
 else:
     @app.get("/")
     async def root():
-        return {"service": "Sfera5 Radio API", "status": "ok"}
+        return {"service": "INTRA GROUP", "version": "3.0.0", "status": "ok"}

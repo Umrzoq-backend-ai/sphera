@@ -2,13 +2,11 @@ import os
 import time
 from typing import Optional
 
-RADIO_PUBLIC_URL = os.getenv("RADIO_PUBLIC_URL", "https://radio.sfera5.world")
+from app.core.config import settings
 
-# AI segmentlar saqlanadigan papka (radio-api va radio-host birga ko'radi)
-AUDIO_DIR = os.getenv("AUDIO_DIR", "/app/audio")
-
-# Icecast ishlatilsinmi (production) yoki ichki playlist rejimi (dev)
-USE_ICECAST = os.getenv("USE_ICECAST", "false").lower() == "true"
+RADIO_PUBLIC_URL = settings.radio_public_url
+AUDIO_DIR = settings.audio_dir
+USE_ICECAST = settings.use_icecast
 
 # Amaldagi shaharlar (bazadan yuklanadi, dinamik kengayadi)
 VALID_CITIES: set[str] = set()
