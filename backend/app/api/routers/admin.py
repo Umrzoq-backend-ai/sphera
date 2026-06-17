@@ -25,11 +25,20 @@ async def set_user_level(
     payload: AdminSetLevelRequest,
     admin: dict = Depends(require_admin),
 ):
-    """Foydalanuvchi levelini o'zgartirish (1, 2, 3)."""
+    """Foydalanuvchi levelini o'zgartirish (1, 2, 3).
+
+    TZ §1:
+      level 1 → listener   (tinglash)
+      level 2 → aktivniy   (pointlar bor, chat + studiya)
+      level 3 → doverenniy (admin beradi, efirga chiqish huquqi)
+    """
     if payload.level not in (1, 2, 3):
         raise HTTPException(status_code=400, detail="Level must be 1, 2, or 3")
 
-    role = "listener" if payload.level < 3 else "broadcaster"
+    # TZ §1: level 3 = doverenniy — FAQAT admin beradi
+    role_map = {1: "listener", 2: "aktivniy", 3: "doverenniy"}
+    role = role_map[payload.level]
+
     result = await db.execute(
         "UPDATE users SET level = $1, role = $2 WHERE id = $3",
         payload.level, role, payload.user_id,
@@ -37,7 +46,7 @@ async def set_user_level(
     if result.endswith("0"):
         raise HTTPException(status_code=404, detail="User not found")
 
-    log.info("Admin %d set level=%d for user=%d", admin["id"], payload.level, payload.user_id)
+    log.info("Admin %d set level=%d role=%s for user=%d", admin["id"], payload.level, role, payload.user_id)
     return OkResponse(detail={"user_id": payload.user_id, "level": payload.level, "role": role})
 
 

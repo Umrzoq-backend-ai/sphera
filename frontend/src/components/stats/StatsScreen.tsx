@@ -195,11 +195,11 @@ export function StatsScreen({ user }: StatsScreenProps) {
                 <div className="flex-1 h-2 rounded-full bg-[rgba(0,0,0,0.3)] overflow-hidden">
                   <div 
                     className="h-full bg-gradient-to-r from-[#00d9ff] to-[#a855f7] rounded-full"
-                    style={{ width: `${user.psychotype.priority_score * 10}%` }}
+                    style={{ width: `${(user.psychotype.priority_score ?? 5) * 10}%` }}
                   />
                 </div>
                 <span className="text-sm font-bold text-[#00d9ff]">
-                  {user.psychotype.priority_score}/10
+                  {user.psychotype.priority_score ?? 5}/10
                 </span>
               </div>
             </div>

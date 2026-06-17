@@ -22,7 +22,7 @@ class AuthResponse(BaseModel):
     is_new_user: bool = False
     language: Optional[str] = None  # tanlangan til (None = hali tanlamagan)
     level: int = 1
-    points: Decimal = Decimal("5.0000")
+    points: Decimal = Decimal("0.0000")
 
 
 class SelectLanguageRequest(BaseModel):
@@ -38,8 +38,12 @@ class UserProfileOut(BaseModel):
     language: str = "ru"
     level: int = 1
     level_name: str = "Слушатель"
-    points: Decimal = Decimal("5.0000")
+    points: Decimal = Decimal("0.0000")
     role: str = "listener"
+    # TZ §4: Psixologik profil (AI analitika)
+    focus_of_attention: Optional[str] = None   # vnutrenniy | vneshniy
+    emotional_tone: Optional[str] = None        # optimist | melanxolik | ratsional
+    key_topic: Optional[str] = None
 
 
 class UpdateProfileRequest(BaseModel):
@@ -154,3 +158,26 @@ class AdminNewsCreate(BaseModel):
 class OkResponse(BaseModel):
     ok: bool = True
     detail: Optional[Any] = None
+
+
+# ============ Messages (studio + voice — TZ §3) ============
+class TextMessageRequest(BaseModel):
+    city: str
+    text: str
+    lang: Optional[str] = None   # ru | en | lt
+
+
+class PsychotypeOut(BaseModel):
+    focus_of_attention: str
+    emotional_tone: str
+    key_topic: str
+    priority_score: int
+
+
+class MessageResponse(BaseModel):
+    transcript: Optional[str] = None
+    psychotype: Optional[PsychotypeOut] = None
+    ai_reply: Optional[str] = None
+    voice_url: Optional[str] = None
+    file_url: Optional[str] = None
+    points: Optional[Any] = None

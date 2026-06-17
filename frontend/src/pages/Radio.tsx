@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/layout/TopBar';
 import { BottomNav } from '../components/layout/BottomNav';
@@ -15,17 +15,13 @@ import type { Screen, User } from '../types';
 
 const ONBOARDING_KEY = 'sfera5_onboarded';
 
-// Screen order for navigation
-const SCREEN_ORDER: Screen[] = ['anons', 'efir', 'profile'];
-
 export function Radio() {
   const navigate = useNavigate();
   const [currentScreen, setCurrentScreen] = useState<Screen>('anons');
-  const [nextScreen, setNextScreen] = useState<Screen | null>(null);
-  const [direction, setDirection] = useState<'left' | 'right'>('right');
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [visible, setVisible] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function init() {
@@ -80,21 +76,16 @@ export function Radio() {
   };
 
   const handleNavigate = (newScreen: Screen) => {
-    if (newScreen === currentScreen || isTransitioning) return;
-
-    const currentIndex = SCREEN_ORDER.indexOf(currentScreen);
-    const newIndex = SCREEN_ORDER.indexOf(newScreen);
-    const dir = newIndex > currentIndex ? 'left' : 'right';
-
-    setDirection(dir);
-    setNextScreen(newScreen);
-    setIsTransitioning(true);
-
+    if (newScreen === currentScreen) return;
+    setVisible(false);
     setTimeout(() => {
       setCurrentScreen(newScreen);
-      setNextScreen(null);
-      setIsTransitioning(false);
-    }, 500);
+      // Ichki scroll containerni tepaga qaytarish
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = 0;
+      }
+      setVisible(true);
+    }, 120);
   };
 
   const renderScreen = (screen: Screen) => {
@@ -115,44 +106,35 @@ export function Radio() {
   };
 
   return (
-    <div className="min-h-[var(--app-vh)] bg-[#060a14] text-[#dbe9ff] flex flex-col relative overflow-hidden">
-      {/* Static background ambient */}
-      <div className="absolute inset-0 pointer-events-none">
+    <div
+      className="bg-[#060a14] text-[#dbe9ff] flex flex-col relative"
+      style={{ height: 'var(--app-vh)', overflow: 'hidden' }}
+    >
+      {/* Background ambient */}
+      <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse,rgba(56,225,255,0.06)_0%,transparent_70%)]" />
       </div>
 
-      <div className="relative z-10 max-w-[460px] mx-auto w-full px-4 pt-3 pb-[100px] flex flex-col gap-4 flex-1">
-        <TopBar points={user?.points || 0} />
-        
-        {/* Smooth Slide Container */}
-        <div className="flex-1 relative overflow-hidden">
-          {/* Current screen */}
-          <div 
-            className="absolute inset-0 overflow-y-auto transition-all duration-500 ease-in-out"
-            style={{
-              transform: isTransitioning 
-                ? `translateX(${direction === 'left' ? '-100%' : '100%'})`
-                : 'translateX(0)',
-              opacity: isTransitioning ? 0 : 1,
-            }}
-          >
+      {/* Asosiy scroll container — mouse wheel + touch ikkalasi ishlaydi */}
+      <div
+        ref={scrollRef}
+        className="relative z-10 flex-1"
+        style={{
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          /* scrollbar ko'rinmaydi lekin ishlaydi */
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}
+      >
+        <div className="max-w-[460px] mx-auto w-full px-4 pt-3 pb-[100px] flex flex-col gap-4">
+          <TopBar points={user?.points || 0} />
+
+          {/* Fade transition */}
+          <div style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.12s ease' }}>
             {renderScreen(currentScreen)}
           </div>
-          
-          {/* Next screen */}
-          {nextScreen && (
-            <div 
-              className="absolute inset-0 overflow-y-auto transition-all duration-500 ease-in-out"
-              style={{
-                transform: isTransitioning
-                  ? 'translateX(0)'
-                  : `translateX(${direction === 'left' ? '100%' : '-100%'})`,
-                opacity: isTransitioning ? 1 : 0,
-              }}
-            >
-              {renderScreen(nextScreen)}
-            </div>
-          )}
         </div>
       </div>
 

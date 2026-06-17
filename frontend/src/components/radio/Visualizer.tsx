@@ -3,101 +3,51 @@ interface VisualizerProps {
 }
 
 export function Visualizer({ isPlaying }: VisualizerProps) {
-  // Markaziy audio to'lqin chiziqlari
-  const bars = Array.from({ length: 28 });
+  // Oddiy waveform chiziqlari (rasmdagidek)
+  const bars = [3, 5, 8, 12, 17, 24, 31, 37, 41, 37, 31, 24, 17, 12, 8, 5, 3];
 
   return (
     <div className="relative w-[280px] h-[280px] flex items-center justify-center">
-      {/* Tashqi nafas oluvchi yorug'lik */}
+
+      {/* Asosiy tashqi halqa (katta ko'k — rasmdagi) */}
       <div
-        className="absolute inset-0 rounded-full blur-2xl"
+        className="absolute"
         style={{
-          background: 'radial-gradient(circle, rgba(56,225,255,0.45), rgba(46,168,255,0.12), transparent 70%)',
-          animation: 'orbGlow 3s ease-in-out infinite',
+          width: '240px',
+          height: '240px',
+          borderRadius: '50%',
+          border: '3px solid #38e1ff',
+          boxShadow: '0 0 30px rgba(56,225,255,0.7), inset 0 0 20px rgba(56,225,255,0.15)',
+          animation: 'ringPulse 2.5s ease-in-out infinite',
         }}
       />
 
-      {/* Aylanuvchi tashqi halqa (Jarvis) */}
-      <div
-        className="absolute inset-2 rounded-full"
-        style={{
-          background: 'conic-gradient(from 0deg, transparent, rgba(56,225,255,0.55), transparent 30%, transparent 60%, rgba(46,168,255,0.45), transparent)',
-          animation: 'spinCW 6s linear infinite',
-          maskImage: 'radial-gradient(transparent 60%, #000 62%, #000 70%, transparent 72%)',
-          WebkitMaskImage: 'radial-gradient(transparent 60%, #000 62%, #000 70%, transparent 72%)',
-        }}
-      />
-
-      {/* Aylanuvchi ichki halqa (teskari) */}
-      <div
-        className="absolute inset-6 rounded-full"
-        style={{
-          background: 'conic-gradient(from 180deg, transparent, rgba(124,92,255,0.5), transparent 40%, rgba(0,217,255,0.5), transparent)',
-          animation: 'spinCCW 9s linear infinite',
-          maskImage: 'radial-gradient(transparent 66%, #000 68%, #000 78%, transparent 80%)',
-          WebkitMaskImage: 'radial-gradient(transparent 66%, #000 68%, #000 78%, transparent 80%)',
-        }}
-      />
-
-      {/* Markaziy yadro */}
-      <div
-        className="absolute inset-[60px] rounded-full overflow-hidden flex items-center justify-center"
-        style={{
-          background: 'radial-gradient(circle at 38% 32%, #18406a, #0a1730 60%, #060a14 100%)',
-          boxShadow: '0 0 50px rgba(46,168,255,0.4), inset 0 0 35px rgba(56,225,255,0.25)',
-          animation: 'corePulse 2.5s ease-in-out infinite',
-        }}
-      >
-        {/* Audio to'lqin (waveform) */}
-        <div className="flex items-end justify-center gap-[3px] h-[46px]">
-          {bars.map((_, i) => {
-            const center = Math.abs(i - bars.length / 2);
-            const base = 8 + (bars.length / 2 - center) * 2.2;
-            return (
-              <span
-                key={i}
-                className="w-[2.5px] rounded-full"
-                style={{
-                  background: 'linear-gradient(180deg, #7c5cff, #38e1ff)',
-                  height: `${base}px`,
-                  animation: isPlaying
-                    ? `wave 0.9s ease-in-out ${i * 0.05}s infinite`
-                    : 'none',
-                  opacity: isPlaying ? 1 : 0.4,
-                  boxShadow: '0 0 6px rgba(56,225,255,0.6)',
-                }}
-              />
-            );
-          })}
-        </div>
-
-        {/* Yuqori yaltiroq nuqta */}
-        <div
-          className="absolute top-[12%] left-[22%] w-[35%] h-[22%] rounded-full"
-          style={{ background: 'radial-gradient(ellipse, rgba(255,255,255,0.18), transparent 70%)', filter: 'blur(4px)' }}
-        />
+      {/* Waveform — markazda */}
+      <div className="absolute flex items-center justify-center gap-[5px]" style={{ width: '180px', height: '80px' }}>
+        {bars.map((h, i) => (
+          <div
+            key={i}
+            style={{
+              width: '5px',
+              height: `${h}px`,
+              background: 'linear-gradient(180deg, #ffffff 10%, #38e1ff 70%, #2ea8ff 100%)',
+              borderRadius: '4px',
+              boxShadow: '0 0 8px rgba(56,225,255,0.9)',
+              animation: isPlaying ? `wave ${0.8 + (i % 2) * 0.2}s ease-in-out ${i * 0.08}s infinite` : 'none',
+              opacity: isPlaying ? 1 : 0.4,
+            }}
+          />
+        ))}
       </div>
 
-      {/* Statik chegara halqa */}
-      <div
-        className="absolute inset-[52px] rounded-full border border-[rgba(56,225,255,0.3)]"
-        style={{ boxShadow: '0 0 24px rgba(46,168,255,0.2)' }}
-      />
-
       <style>{`
-        @keyframes spinCW { to { transform: rotate(360deg); } }
-        @keyframes spinCCW { to { transform: rotate(-360deg); } }
-        @keyframes orbGlow {
-          0%, 100% { opacity: 0.5; transform: scale(1); }
-          50% { opacity: 0.9; transform: scale(1.05); }
-        }
-        @keyframes corePulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.04); }
+        @keyframes ringPulse {
+          0%, 100% { transform: scale(1); opacity: 0.85; }
+          50%       { transform: scale(1.02); opacity: 1; }
         }
         @keyframes wave {
-          0%, 100% { transform: scaleY(0.5); }
-          50% { transform: scaleY(1.6); }
+          0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
+          50%       { transform: scaleY(1.4); opacity: 1; }
         }
       `}</style>
     </div>

@@ -34,9 +34,18 @@ def _level_name(level: int) -> str:
     return LEVELS.get(level, "Слушатель")
 
 
+# TZ §1: Rol nomi (role maydoni bo'yicha)
+ROLE_DISPLAY: dict[str, str] = {
+    "listener":   "Слушатель",
+    "aktivniy":   "Активный",
+    "doverenniy": "Доверенный",
+    "admin":      "Администратор",
+}
+
+
 @router.get("/me", response_model=UserProfileOut)
 async def get_me(user: dict = Depends(get_current_user)):
-    """Profil ma'lumotlari."""
+    """Profil ma'lumotlari (TZ §1 + §4: level, role, psixotip)."""
     return UserProfileOut(
         id=user["id"],
         telegram_id=user["telegram_id"],
@@ -47,6 +56,10 @@ async def get_me(user: dict = Depends(get_current_user)):
         level_name=_level_name(user["level"]),
         points=user["points"],
         role=user["role"],
+        # TZ §4: psixologik profil (oxirgi tahlil natijasi)
+        focus_of_attention=user.get("focus_of_attention"),
+        emotional_tone=user.get("emotional_tone"),
+        key_topic=user.get("key_topic"),
     )
 
 
@@ -188,10 +201,9 @@ async def purchase_points(
     payload: PurchaseRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Point sotib olish (placeholder — real to'lov integratsiyasi keyin).
+    """Point sotib olish (test rejim — real to'lov keyinchalik).
 
-    Hozircha: paket tanlash → points qo'shiladi (test uchun).
-    Production'da: Stripe/Telegram Stars integratsiya kerak.
+    Paket tanlash → bir marta points qo'shiladi + bir marta transaction yoziladi.
     """
     pkg = await db.fetchrow(
         "SELECT * FROM point_packages WHERE id = $1 AND is_active = true",
@@ -200,15 +212,14 @@ async def purchase_points(
     if pkg is None:
         raise HTTPException(status_code=404, detail="Package not found")
 
-    result = await points_service.add_points_admin(user["id"], pkg["points_amount"])
+    # add_points — ichida transaction ham yozadi, level ham yangilanadi
+    result = await points_service.add_points(
+        user["id"],
+        pkg["points_amount"],
+        event_type="purchase",
+        description=f"Purchased {pkg['label']} for €{pkg['price_eur']}",
+    )
     if not result["ok"]:
         raise HTTPException(status_code=500, detail="Purchase failed")
 
-    await db.execute(
-        """
-        INSERT INTO points_transactions (user_id, amount, event_type, description)
-        VALUES ($1, $2, 'purchase', $3)
-        """,
-        user["id"], pkg["points_amount"], f"Purchased {pkg['label']} for €{pkg['price_eur']}",
-    )
-    return OkResponse(detail={"points": result["points"], "purchased": str(pkg["points_amount"])})
+    return OkResponse(detail={"points": str(result["points"]), "purchased": str(pkg["points_amount"])})

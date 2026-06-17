@@ -1,13 +1,10 @@
 import { Zap } from 'lucide-react';
-import { useTranslation } from '../../hooks/useTranslation';
 
 interface TopBarProps {
   points: number;
 }
 
 export function TopBar({ points }: TopBarProps) {
-  const { t } = useTranslation();
-
   return (
     <header className="flex items-center justify-between py-2">
       {/* Logo */}

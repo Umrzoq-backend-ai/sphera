@@ -80,10 +80,7 @@ export function ChatInput({ onSendMessage, onToast, city, language, onPointsUpda
     onToast(t('toast_processing'));
 
     try {
-      const result = await sendVoiceMessage(city, pendingVoice, destination, language);
-      if (result.points !== undefined) {
-        onPointsUpdate(result.points);
-      }
+      await sendVoiceMessage(city, pendingVoice, destination, language);
       onToast(destination === 'studio' ? t('toast_sent_studio') : t('toast_sent_chat'));
     } catch (error: any) {
       if (error.status === 403) {
@@ -111,10 +108,7 @@ export function ChatInput({ onSendMessage, onToast, city, language, onPointsUpda
     }
     onToast(t('toast_processing'));
     try {
-      const result = await uploadFile(city, file);
-      if (result.points !== undefined) {
-        onPointsUpdate(result.points);
-      }
+      await uploadFile(city, file);
       onToast(t('toast_sent_chat'));
     } catch (error: any) {
       if (error.status === 402) {

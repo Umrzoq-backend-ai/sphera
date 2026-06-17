@@ -22,7 +22,7 @@ from app.core.logging_config import setup_logging
 from app.core.database import db
 from app.core import redis as redis_client
 from app.core.middleware import RequestLoggingMiddleware
-from app.api.routers import auth, users, chat, admin, news
+from app.api.routers import auth, users, chat, admin, news, messages
 
 setup_logging(debug=settings.debug)
 log = logging.getLogger("app")
@@ -36,7 +36,10 @@ async def lifespan(app: FastAPI):
     # 1. Database (retry bilan)
     await db.connect()
 
-    # 2. Redis (graceful fallback)
+    # 2. Schema migration (jadvallar yo'q bo'lsa yaratiladi)
+    await _run_migrations()
+
+    # 3. Redis (graceful fallback)
     await redis_client.connect()
 
     log.info("Application started successfully")
@@ -47,6 +50,25 @@ async def lifespan(app: FastAPI):
     await redis_client.disconnect()
     await db.disconnect()
     log.info("Shutdown complete")
+
+
+async def _run_migrations() -> None:
+    """Schema SQL faylini o'qib, jadvallarni yaratadi (CREATE IF NOT EXISTS)."""
+    import os
+    schema_path = os.path.join(os.path.dirname(__file__), "app", "db", "schema.sql")
+    if not os.path.exists(schema_path):
+        # Docker ichida to'g'ridan path
+        schema_path = "/app/app/db/schema.sql"
+    if not os.path.exists(schema_path):
+        log.warning("Schema file not found, skipping migration")
+        return
+    try:
+        with open(schema_path, "r") as f:
+            sql = f.read()
+        await db.execute(sql)
+        log.info("Database migration completed")
+    except Exception as exc:
+        log.error("Migration error (non-fatal): %s", exc)
 
 
 app = FastAPI(
@@ -75,6 +97,7 @@ app.include_router(users.router)
 app.include_router(chat.router)
 app.include_router(news.router)
 app.include_router(admin.router)
+app.include_router(messages.router)
 
 
 # Global exception handler

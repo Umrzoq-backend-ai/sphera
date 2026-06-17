@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Globe, Zap, Pencil, Send, HandCoins, ShoppingCart, Check, X } from 'lucide-react';
+import { Zap, Pencil, Send, HandCoins, ShoppingCart, Check, X } from 'lucide-react';
 import {
   updateProfile, transferPoints, requestPoints, getMyRequests,
   decideRequest, getPackages, purchasePackage, getMe,
@@ -117,6 +117,43 @@ export function ProfileScreen({ user, onUserUpdate }: ProfileScreenProps) {
         <ProfileRow label={tx('name')} value={user.display_name || user.full_name || '—'} />
         <ProfileRow label={tx('username')} value={user.username ? `@${user.username}` : '—'} />
       </div>
+
+      {/* TZ §4: Psixologik profil (AI analitika) — mavjud bo'lsa ko'rsatish */}
+      {(user.focus_of_attention || user.emotional_tone) && (
+        <div className="glass rounded-2xl p-4 flex flex-col gap-2.5">
+          <div className="text-[11px] font-bold text-[#38e1ff] uppercase tracking-wide mb-1">
+            🧠 {lang === 'ru' ? 'Психопрофиль' : lang === 'lt' ? 'Psichotipas' : 'Psychotype'}
+          </div>
+          {user.focus_of_attention && (
+            <ProfileRow
+              label={lang === 'ru' ? 'Фокус внимания' : lang === 'lt' ? 'Dėmesio fokusas' : 'Focus'}
+              value={
+                user.focus_of_attention === 'vnutrenniy'
+                  ? (lang === 'ru' ? 'Внутренний' : lang === 'lt' ? 'Vidinis' : 'Internal')
+                  : (lang === 'ru' ? 'Внешний' : lang === 'lt' ? 'Išorinis' : 'External')
+              }
+            />
+          )}
+          {user.emotional_tone && (
+            <ProfileRow
+              label={lang === 'ru' ? 'Эмоц. тон' : lang === 'lt' ? 'Emocinis tonas' : 'Emotion'}
+              value={
+                user.emotional_tone === 'optimist'
+                  ? (lang === 'ru' ? 'Оптимист' : lang === 'lt' ? 'Optimistas' : 'Optimist')
+                  : user.emotional_tone === 'melanxolik'
+                  ? (lang === 'ru' ? 'Меланхолик' : lang === 'lt' ? 'Melancholikas' : 'Melancholic')
+                  : (lang === 'ru' ? 'Рационал' : lang === 'lt' ? 'Racionalistas' : 'Rational')
+              }
+            />
+          )}
+          {user.key_topic && (
+            <ProfileRow
+              label={lang === 'ru' ? 'Тема' : lang === 'lt' ? 'Tema' : 'Topic'}
+              value={user.key_topic}
+            />
+          )}
+        </div>
+      )}
 
       {/* Tahrirlash */}
       <button

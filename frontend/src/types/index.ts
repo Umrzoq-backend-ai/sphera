@@ -12,6 +12,10 @@ export interface User {
   language: 'ru' | 'lt' | 'en';
   broadcast_lang?: 'ru' | 'lt' | 'en';
   city?: string;
+  // TZ §4: Psixologik profil (backend /users/me dan keladi)
+  focus_of_attention?: 'vnutrenniy' | 'vneshniy' | null;
+  emotional_tone?: 'optimist' | 'melanxolik' | 'ratsional' | null;
+  key_topic?: string | null;
   psychotype?: Psychotype;
 }
 
@@ -19,6 +23,7 @@ export interface Psychotype {
   emotional_tone: 'optimist' | 'melanxolik' | 'ratsional';
   focus_of_attention: 'vnutrenniy' | 'vneshniy';
   key_topic: string;
+  priority_score?: number;
 }
 
 // Point so'rovi (menga kelgan)

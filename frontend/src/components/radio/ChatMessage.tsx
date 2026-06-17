@@ -33,7 +33,7 @@ export function ChatMessage({ message, currentUser }: ChatMessageProps) {
 
   const renderContent = () => {
     if (message.voice_url) {
-      return <VoicePlayer url={message.voice_url} duration={message.duration_sec} voiceLabel={t('voice_label')} />;
+      return <VoicePlayer url={message.voice_url} duration={message.duration_sec ?? null} voiceLabel={t('voice_label')} />;
     }
     if (message.file_url) {
       return <FileAttachment url={message.file_url} name={message.file_name || 'файл'} isMine={!!isMine} />;

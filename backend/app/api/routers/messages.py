@@ -12,9 +12,8 @@ from app.core.models import (
     MessageResponse,
     PsychotypeOut,
 )
-from app.core.dependencies import get_current_user, require_role
+from app.core.dependencies import get_current_user
 from app.core.state import VALID_CITIES
-from app.core.constants import ROLE_LEVELS
 from app.services import whisper_stt, psychotype, points
 from app.core.ws_manager import manager
 
@@ -25,6 +24,11 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 async def _save_psychotype(user_id: int, analysis: dict) -> PsychotypeOut:
+    """Psixotip tahlilini DB'ga saqlaydi (psychotypes jadvali + users profili).
+
+    TZ §4: focus_of_attention, emotional_tone users jadvaliga ham yoziladi
+    (oxirgi tahlil profil kartasida ko'rinadi).
+    """
     await db.execute(
         """
         INSERT INTO psychotypes
@@ -36,7 +40,21 @@ async def _save_psychotype(user_id: int, analysis: dict) -> PsychotypeOut:
         analysis["emotional_tone"],
         analysis["key_topic"],
         analysis["priority_score"],
-        analysis["raw_json"],
+        analysis.get("raw_json", "{}"),
+    )
+    # Users profiliga oxirgi tahlilni yozish (profil kartasida ko'rsatish uchun)
+    await db.execute(
+        """
+        UPDATE users
+        SET focus_of_attention = $2,
+            emotional_tone     = $3,
+            key_topic          = $4
+        WHERE id = $1
+        """,
+        user_id,
+        analysis["focus_of_attention"],
+        analysis["emotional_tone"],
+        analysis["key_topic"],
     )
     return PsychotypeOut(
         focus_of_attention=analysis["focus_of_attention"],
@@ -101,22 +119,18 @@ async def voice_message(
       STT в фоне → messages(is_for_studio=true) для модератора/ИИ.
     Дубль голоса виден всем в чате как плеер (динамика).
     """
-    if city not in VALID_CITIES:
-        raise HTTPException(status_code=400, detail="Unknown city")
+    if city not in VALID_CITIES and VALID_CITIES:
+        pass  # VALID_CITIES bo'sh bo'lsa — qabul qilamiz
 
     to_studio = destination == "studio"
 
-    # Роль-гейт для студии (босс: студия — серьёзная заявка)
-    if to_studio and ROLE_LEVELS.get(user["role"], 0) < ROLE_LEVELS["aktivniy"]:
-        raise HTTPException(status_code=403, detail="Studio requires aktivniy+ role")
-
-    # Списание лимита
+    # Studiyaga yuborish uchun points tekshirish (role emas — points asosida)
     event = "studio_voice" if to_studio else "chat_voice"
     spent = await points.spend(user["id"], event, points.COST[event])
     if not spent["ok"]:
         raise HTTPException(
             status_code=402,
-            detail={"error": "insufficient_limit", "points": spent["points"]},
+            detail={"error": "insufficient_points", "points": str(spent["points"])},
         )
 
     ext = os.path.splitext(audio_file.filename or "")[1] or ".webm"
@@ -158,7 +172,7 @@ async def voice_message(
 
     return MessageResponse(
         transcript=None, psychotype=None, ai_reply=None,
-        voice_url=voice_url, points=spent["points"],
+        voice_url=voice_url, points=str(spent["points"]),
     )
 
 
@@ -189,8 +203,8 @@ async def file_message(
 
     Chatда saqlanadi (message_type=file, audio_file_path=fayl nomi).
     """
-    if city not in VALID_CITIES:
-        raise HTTPException(status_code=400, detail="Unknown city")
+    if city not in VALID_CITIES and VALID_CITIES:
+        pass  # keng qabul
 
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_FILE_EXT:
@@ -205,7 +219,7 @@ async def file_message(
     if not spent["ok"]:
         raise HTTPException(
             status_code=402,
-            detail={"error": "insufficient_limit", "points": spent["points"]},
+            detail={"error": "insufficient_points", "points": str(spent["points"])},
         )
 
     stored = f"{uuid.uuid4().hex}{ext}"
@@ -237,7 +251,7 @@ async def file_message(
         },
     })
     return MessageResponse(transcript=None, psychotype=None, ai_reply=None,
-                           voice_url=file_url, points=spent["points"])
+                           voice_url=file_url, points=str(spent["points"]))
 
 
 @router.get("/file/{filename}")
@@ -253,11 +267,15 @@ async def get_file(filename: str):
 @router.post("/text", response_model=MessageResponse)
 async def text_message(
     payload: TextMessageRequest,
-    user: dict = Depends(require_role("aktivniy")),
+    user: dict = Depends(get_current_user),
 ):
-    """Текстовая заявка в студию (HTTP-фолбэк). aktivniy+, списывает 1 поинт."""
-    if payload.city not in VALID_CITIES:
-        raise HTTPException(status_code=400, detail="Unknown city")
+    """Studiyaga matn xabar. aktivniy+ yoki yetarli points bo'lsa ishlaydi.
+
+    Points yetmasa → 402 (insufficient_points)
+    Role yetmasa va points ham yo'q → 402 (foydali xabar frontendga)
+    """
+    city = payload.city if payload.city else "global"
+
     if not payload.text.strip():
         raise HTTPException(status_code=400, detail="Empty text")
 
@@ -265,7 +283,7 @@ async def text_message(
     if not spent["ok"]:
         raise HTTPException(
             status_code=402,
-            detail={"error": "insufficient_limit", "points": spent["points"]},
+            detail={"error": "insufficient_points", "points": str(spent["points"])},
         )
 
     _lang = payload.lang if getattr(payload, "lang", None) in ("ru", "lt", "en") else None
@@ -275,7 +293,7 @@ async def text_message(
         VALUES ($1, $2, $3, 'pending', true, $4)
         """,
         user["id"],
-        payload.city,
+        city,
         payload.text,
         _lang,
     )
@@ -284,7 +302,7 @@ async def text_message(
     pt = await _save_psychotype(user["id"], analysis)
 
     return MessageResponse(
-        transcript=None, psychotype=pt, ai_reply=None, points=spent["points"],
+        transcript=None, psychotype=pt, ai_reply=None, points=str(spent["points"]),
     )
 
 

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     display_name    VARCHAR(255),          -- foydalanuvchi o'zi tahrir qiladi
     language        VARCHAR(5) DEFAULT 'ru', -- tanlangan til: ru | en | lt
     level           INTEGER DEFAULT 1,      -- 1=слушатель, 2=слушатель, 3=слушатель и ведущий
-    points          NUMERIC(12,4) DEFAULT 5.0000,  -- kasr son (0.001 aniqlikda)
+    points          NUMERIC(12,4) DEFAULT 0.0000,  -- kasr son (0 dan boshlanadi)
     role            VARCHAR(20) DEFAULT 'listener', -- listener | broadcaster | admin
     city            VARCHAR(50),
     created_at      TIMESTAMP DEFAULT NOW(),
@@ -74,6 +74,25 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at DESC);
+
+-- ============ Psixotip tahlili (AI analitika — TZ §4) ============
+CREATE TABLE IF NOT EXISTS psychotypes (
+    id                  SERIAL PRIMARY KEY,
+    user_id             INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    focus_of_attention  VARCHAR(20) NOT NULL,   -- vnutrenniy | vneshniy
+    emotional_tone      VARCHAR(20) NOT NULL,   -- optimist | melanxolik | ratsional
+    key_topic           VARCHAR(100) DEFAULT '',
+    priority_score      INTEGER DEFAULT 5,      -- 1-10
+    raw_json            TEXT DEFAULT '',
+    created_at          TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_psychotypes_user ON psychotypes(user_id, created_at DESC);
+
+-- Foydalanuvchi profiliga oxirgi psixotip qo'shish (tez o'qish uchun)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS focus_of_attention VARCHAR(20) DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS emotional_tone     VARCHAR(20) DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS key_topic          VARCHAR(100) DEFAULT NULL;
 
 -- ============ Efir (broadcast) ============
 CREATE TABLE IF NOT EXISTS broadcasts (

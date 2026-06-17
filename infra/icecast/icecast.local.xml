@@ -49,6 +49,10 @@
         <webroot>/usr/share/icecast2/web</webroot>
         <adminroot>/usr/share/icecast2/admin</adminroot>
         <alias source="/" destination="/status.xsl"/>
+        <changeowner>
+            <user>umrzoq</user>
+            <group>umrzoq</group>
+        </changeowner>
     </paths>
 
     <logging>
