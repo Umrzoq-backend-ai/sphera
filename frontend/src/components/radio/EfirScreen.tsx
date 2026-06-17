@@ -7,6 +7,7 @@ import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { useToast } from '../../hooks/useToast';
 import { Toast } from '../ui/Toast';
 import { getRadioStatus, getChatHistory, sendVoiceMessage } from '../../lib/api';
+import { authHeaders } from '../../lib/auth';
 import { DEFAULT_CITY, LS_CITY } from '../../lib/config';
 import { useTranslation } from '../../hooks/useTranslation';
 import type { User, RadioStatus, ChatMessage } from '../../types';
@@ -347,11 +348,18 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
       )}
 
       {/* ══════════════════════════════════════════════════
-          MODAL: ПОТОК REAL TIME (второй экран из рисунка)
+          MODAL: ПОТОК REAL TIME
       ══════════════════════════════════════════════════ */}
       {showStreamModal && (
-        <div className="fixed inset-0 z-50 flex flex-col"
-          style={{ background: '#060a14' }}>
+        <div
+          className="fixed z-[9999] flex flex-col"
+          style={{
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: '#060a14',
+            // Telegram mini app ichida karta orqasidan ko'rinmaslik uchun
+            isolation: 'isolate',
+          }}
+        >
 
           {/* Header */}
           <div className="flex items-center px-4 pt-4 pb-3 border-b"
@@ -389,17 +397,19 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
                 <div className="text-[10px] text-[#6b7c9e] uppercase tracking-wide mb-1">УРОВЕНЬ</div>
                 <div className="text-3xl font-black text-[#38e1ff] mb-2">{level}</div>
                 {/* Progress bar */}
-                <div className="h-1.5 rounded-full overflow-hidden"
-                  style={{ background: 'rgba(56,225,255,0.1)' }}>
+                <div className="h-2 rounded-full overflow-hidden mt-1"
+                  style={{ background: 'rgba(56,225,255,0.12)' }}>
                   <div className="h-full rounded-full transition-all"
                     style={{
-                      width: `${Math.min((Number(user?.points || 0) % 500) / 500 * 100, 100)}%`,
+                      width: `${Math.max(2, Math.min(Number(user?.points || 0) / 500 * 100, 100))}%`,
                       background: 'linear-gradient(90deg, #2ea8ff, #38e1ff)',
-                      boxShadow: '0 0 8px rgba(56,225,255,0.6)',
+                      boxShadow: '0 0 8px rgba(56,225,255,0.7)',
+                      minWidth: '6px',
                     }} />
                 </div>
-                <div className="text-[9px] text-[#6b7c9e] mt-1 text-right">
-                  {Math.round((Number(user?.points || 0) % 500))} / 500
+                <div className="flex justify-between text-[9px] text-[#6b7c9e] mt-1">
+                  <span>{Number(user?.points || 0).toFixed(4)} pts</span>
+                  <span>500 → next level</span>
                 </div>
               </div>
             </div>
@@ -558,8 +568,14 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
           MODAL: ЧАТ
       ══════════════════════════════════════════════════ */}
       {showChatModal && (
-        <div className="fixed inset-0 z-50 flex flex-col"
-          style={{ background: '#060a14' }}>
+        <div
+          className="fixed z-[9999] flex flex-col"
+          style={{
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: '#060a14',
+            isolation: 'isolate',
+          }}
+        >
 
           {/* Header */}
           <div className="flex items-center px-4 pt-4 pb-3 border-b"
@@ -600,7 +616,13 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
 
           {/* Input */}
           <div className="px-4 pb-6 pt-3 border-t" style={{ borderColor: 'rgba(56,225,255,0.1)' }}>
-            <ChatInputBar onSend={(msg) => handleSendMessage(msg, 'chat')} />
+            <ChatInputBar
+              city={city}
+              lang={lang}
+              onSendText={(msg) => handleSendMessage(msg, 'chat')}
+              onPointsUpdate={onPointsUpdate}
+              onToast={showToast}
+            />
           </div>
         </div>
       )}
@@ -610,19 +632,28 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
   );
 }
 
-/* ── Inline chat input ── */
-function ChatInputBar({ onSend }: { onSend: (msg: string) => void }) {
+/* ── Chat input (matn + ovoz yozish + yuborish) ── */
+interface ChatInputBarProps {
+  city: string;
+  lang: string;
+  onSendText: (msg: string) => void;
+  onPointsUpdate: (pts: number) => void;
+  onToast: (msg: string) => void;
+}
+
+function ChatInputBar({ city: _city, lang: _lang, onSendText, onPointsUpdate, onToast }: ChatInputBarProps) {
   const [val, setVal] = useState('');
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
   const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [sendingVoice, setSendingVoice] = useState(false);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Запись
+  // Ovoz yozishni boshlash/to'xtatish
   const toggleRecording = async () => {
     if (recording && recRef.current) {
       recRef.current.stop();
@@ -632,27 +663,31 @@ function ChatInputBar({ onSend }: { onSend: (msg: string) => void }) {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
+      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       recRef.current = mr;
       chunksRef.current = [];
-      mr.ondataavailable = e => chunksRef.current.push(e.data);
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        if (blob.size < 500) return;
+        if (blob.size < 500) {
+          onToast('Запись слишком короткая');
+          return;
+        }
         setPendingBlob(blob);
         setPreviewUrl(URL.createObjectURL(blob));
         setRecSeconds(0);
       };
-      mr.start();
+      mr.start(100); // har 100ms da chunk
       setRecording(true);
       setRecSeconds(0);
       timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
     } catch {
-      alert('Нет доступа к микрофону');
+      onToast('Нет доступа к микрофону');
     }
   };
 
+  // Preview ni o'chirish
   const discardVoice = () => {
     setPendingBlob(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -660,45 +695,109 @@ function ChatInputBar({ onSend }: { onSend: (msg: string) => void }) {
     setRecSeconds(0);
   };
 
+  // Preview tinglash
+  const playPreview = () => {
+    if (previewUrl) new Audio(previewUrl).play().catch(() => {});
+  };
+
+  // Ovozni serverga yuborish
+  const sendVoice = async () => {
+    if (!pendingBlob || sendingVoice) return;
+    setSendingVoice(true);
+    try {
+      const fd = new FormData();
+      fd.append('audio_file', pendingBlob, 'voice.webm');
+      const resp = await fetch('/chat/voice', {
+        method: 'POST',
+        headers: { ...authHeaders() },
+        body: fd,
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        if (resp.status === 402) onToast('Недостаточно поинтов');
+        else onToast('Ошибка отправки голосового');
+        console.error('Voice send error:', err);
+      } else {
+        const data = await resp.json();
+        const pts = data?.detail?.points;
+        if (pts !== undefined) onPointsUpdate(Number(pts));
+        onToast('Голосовое отправлено ✅');
+        discardVoice();
+      }
+    } catch (e) {
+      onToast('Ошибка отправки');
+      console.error(e);
+    } finally {
+      setSendingVoice(false);
+    }
+  };
+
+  // Matn yuborish
   const sendText = async () => {
     if (!val.trim() || busy) return;
     setBusy(true);
-    try { onSend(val.trim()); setVal(''); }
+    try { onSendText(val.trim()); setVal(''); }
     finally { setBusy(false); }
   };
 
-  const fmtSec = (s: number) => `${Math.floor(s / 60).toString().padStart(2,'0')}:${(s % 60).toString().padStart(2,'0')}`;
+  const fmtSec = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
     <div className="flex flex-col gap-2">
 
-      {/* ── Превью голосового (после записи) ── */}
+      {/* Ovoz preview (yozilgandan keyin) */}
       {pendingBlob && previewUrl && (
-        <div className="rounded-2xl px-3 py-2 flex items-center gap-3"
-          style={{ background: 'rgba(16,28,52,0.9)', border: '1px solid rgba(56,225,255,0.2)' }}>
-          {/* Play preview */}
+        <div
+          className="rounded-2xl px-3 py-2.5 flex items-center gap-3"
+          style={{ background: 'rgba(16,28,52,0.9)', border: '1px solid rgba(56,225,255,0.2)' }}
+        >
+          {/* Tinglash */}
           <button
-            onClick={() => new Audio(previewUrl).play()}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] shrink-0"
+            onClick={playPreview}
+            className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center active:scale-90"
+            style={{ background: 'linear-gradient(135deg,#1a6aff,#38e1ff)' }}
+          >
+            <svg width="11" height="13" fill="white" viewBox="0 0 11 13" style={{ marginLeft: 2 }}>
+              <path d="M0 0 L11 6.5 L0 13 Z"/>
+            </svg>
+          </button>
+
+          {/* Waveform ko'rinish */}
+          <div className="flex-1 flex items-center gap-[2px]" style={{ height: '20px' }}>
+            {[3,5,8,6,10,7,12,9,14,11,12,8,10,6,7,4,5].map((h, i) => (
+              <div key={i} style={{
+                flex: 1, height: `${h}px`,
+                background: 'rgba(56,225,255,0.5)',
+                borderRadius: '2px',
+              }} />
+            ))}
+          </div>
+
+          <span className="text-[10px] text-[#6b7c9e] shrink-0">готово</span>
+
+          {/* Yuborish */}
+          <button
+            onClick={sendVoice}
+            disabled={sendingVoice}
+            className="px-3 py-1.5 rounded-xl text-[11px] font-bold disabled:opacity-50 active:scale-95 transition-all shrink-0"
             style={{ background: 'linear-gradient(135deg,#2ea8ff,#38e1ff)', color: '#02101f' }}
-          >▶</button>
-          <span className="flex-1 text-xs text-[#38e1ff]">Голосовое готово</span>
-          {/* Отправить */}
+          >
+            {sendingVoice ? '...' : 'Отправить'}
+          </button>
+
+          {/* O'chirish */}
           <button
-            onClick={() => { onSend('[voice]'); discardVoice(); }}
-            className="px-3 py-1.5 rounded-xl text-[11px] font-bold text-[#02101f] active:scale-95 transition-all"
-            style={{ background: 'linear-gradient(135deg,#2ea8ff,#38e1ff)' }}
-          >Отправить</button>
-          {/* Удалить */}
-          <button onClick={discardVoice}
-            className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90"
-            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)' }}>
+            onClick={discardVoice}
+            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 active:scale-90"
+            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)' }}
+          >
             <X className="w-3.5 h-3.5 text-[#ef4444]" />
           </button>
         </div>
       )}
 
-      {/* ── Текстовый input + кнопка отправки ── */}
+      {/* Matn input + yuborish */}
       <div className="flex gap-2">
         <input
           value={val}
@@ -706,37 +805,36 @@ function ChatInputBar({ onSend }: { onSend: (msg: string) => void }) {
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendText())}
           placeholder="Введите сообщение..."
           disabled={busy}
-          className="flex-1 px-4 py-3 rounded-2xl text-sm text-[#dbe9ff] placeholder:text-[#6b7c9e] outline-none disabled:opacity-50"
-          style={{ background: 'rgba(16,28,52,0.8)', border: '1px solid rgba(56,225,255,0.15)' }}
+          className="flex-1 px-4 py-3 rounded-2xl text-sm text-[#dbe9ff] placeholder:text-[#4a5a7a] outline-none disabled:opacity-50"
+          style={{ background: 'rgba(14,24,44,0.9)', border: '1px solid rgba(56,225,255,0.12)' }}
         />
         <button
           onClick={sendText}
           disabled={!val.trim() || busy}
           className="w-12 h-12 rounded-2xl flex items-center justify-center disabled:opacity-40 active:scale-95 transition-all"
           style={{
-            background: val.trim() ? 'linear-gradient(135deg,#2ea8ff,#38e1ff)' : 'rgba(16,28,52,0.8)',
-            border: '1px solid rgba(56,225,255,0.2)',
+            background: val.trim() ? 'linear-gradient(135deg,#2ea8ff,#38e1ff)' : 'rgba(14,24,44,0.9)',
+            border: '1px solid rgba(56,225,255,0.15)',
           }}
         >
           {busy
-            ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-            : <Send className="w-4 h-4" style={{ color: val.trim() ? '#060a14' : '#6b7c9e' }} strokeWidth={2}/>
+            ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            : <Send className="w-4 h-4" style={{ color: val.trim() ? '#060a14' : '#4a5a7a' }} strokeWidth={2} />
           }
         </button>
       </div>
 
-      {/* ── Кнопка Голосового сообщения (всегда видимая) ── */}
+      {/* Mic tugmasi — har doim ko'rinadi */}
       <button
         onClick={toggleRecording}
         className="w-full rounded-2xl py-3 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
         style={{
-          background: recording ? 'rgba(239,68,68,0.12)' : 'rgba(16,28,52,0.7)',
-          border: recording ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(56,225,255,0.15)',
+          background: recording ? 'rgba(239,68,68,0.1)' : 'rgba(14,24,44,0.7)',
+          border: recording ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(56,225,255,0.12)',
           boxShadow: recording ? '0 0 16px rgba(239,68,68,0.2)' : 'none',
         }}
       >
-        {/* Mic SVG */}
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        <svg width="16" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"
           strokeWidth={1.8} style={{ color: recording ? '#ef4444' : '#38e1ff' }}>
           <path strokeLinecap="round" strokeLinejoin="round"
             d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -746,20 +844,17 @@ function ChatInputBar({ onSend }: { onSend: (msg: string) => void }) {
 
         {recording ? (
           <div className="flex items-center gap-2">
-            {/* Анимация записи */}
-            <div className="flex items-center gap-[3px]">
-              {[6,10,7,12,8].map((h, i) => (
+            <div className="flex items-center gap-[2px]">
+              {[5,8,6,10,7].map((h, i) => (
                 <div key={i} style={{
                   width: '3px', height: `${h}px`,
                   background: '#ef4444', borderRadius: '2px',
-                  animation: `recWave ${0.6+(i*0.1)}s ease-in-out ${i*0.1}s infinite`,
-                }}/>
+                  animation: `recWave ${0.5 + i * 0.1}s ease-in-out ${i * 0.1}s infinite`,
+                }} />
               ))}
             </div>
-            <span className="text-sm font-bold text-[#ef4444] tabular-nums">
-              {fmtSec(recSeconds)}
-            </span>
-            <span className="text-xs text-[#ef4444]/70">Нажмите чтобы остановить</span>
+            <span className="text-sm font-bold text-[#ef4444] tabular-nums">{fmtSec(recSeconds)}</span>
+            <span className="text-[11px] text-[#ef4444]/70">Нажмите чтобы остановить</span>
           </div>
         ) : (
           <span className="text-sm font-medium text-[#38e1ff]">Голосовое сообщение</span>
@@ -769,7 +864,7 @@ function ChatInputBar({ onSend }: { onSend: (msg: string) => void }) {
       <style>{`
         @keyframes recWave {
           0%,100% { transform: scaleY(0.5); }
-          50% { transform: scaleY(1.5); }
+          50% { transform: scaleY(1.6); }
         }
       `}</style>
     </div>

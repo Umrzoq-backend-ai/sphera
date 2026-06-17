@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { FileText } from 'lucide-react';
 import { API_URL } from '../../lib/config';
 import type { ChatMessage } from '../../types';
@@ -11,30 +11,23 @@ interface ChatMessagesProps {
 export function ChatMessages({ messages }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Yangi xabar kelganda avtomatik pastga scroll
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   const formatTime = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleTimeString('ru-RU', {
-        hour: '2-digit', minute: '2-digit',
-      });
-    } catch {
-      return '';
-    }
+      return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    } catch { return ''; }
   };
 
   if (messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="text-3xl mb-3 opacity-30">💬</div>
+        <div className="text-3xl mb-3 opacity-20">🎤</div>
         <p className="text-xs text-[#6b7c9e]">Чат пока пуст</p>
-        <p className="text-[10px] text-[#6b7c9e]/60 mt-1">Начните общение!</p>
+        <p className="text-[10px] text-[#6b7c9e]/50 mt-1">Начните общение!</p>
       </div>
     );
   }
@@ -42,19 +35,14 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
   return (
     <div
       ref={scrollRef}
+      className="flex flex-col gap-2 py-1"
       style={{
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
-        // скрыть полосу прокрутки — только свайп пальцем
-        scrollbarWidth: 'none',         /* Firefox */
-        msOverflowStyle: 'none',        /* IE/Edge */
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
       }}
-      className="flex flex-col gap-2 py-1"
     >
-      <style>{`
-        div[data-chat-scroll]::-webkit-scrollbar { display: none; }
-      `}</style>
-
       {messages.map((msg, idx) => {
         const isAI = msg.username?.includes('ИИ') || msg.username?.includes('AI');
         const isStudio = msg.message_type === 'studio' || msg.message_type === 'studio_voice';
@@ -62,25 +50,23 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
         return (
           <div
             key={idx}
-            className={`flex flex-col gap-1 px-3 py-2.5 rounded-2xl ${
-              isAI
-                ? 'bg-[rgba(124,92,255,0.12)] border border-[rgba(124,92,255,0.2)]'
-                : isStudio
-                ? 'bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.2)]'
-                : 'bg-[rgba(16,28,52,0.7)] border border-[rgba(56,225,255,0.08)]'
-            }`}
+            className="flex flex-col gap-1.5 px-3 py-2.5 rounded-2xl"
+            style={{
+              background: isAI
+                ? 'rgba(124,92,255,0.1)'
+                : 'rgba(14,24,44,0.85)',
+              border: `1px solid ${isAI ? 'rgba(124,92,255,0.2)' : isStudio ? 'rgba(245,158,11,0.2)' : 'rgba(56,225,255,0.08)'}`,
+            }}
           >
             {/* Имя + время */}
-            <div className="flex items-center justify-between gap-2">
-              <span className={`text-[11px] font-bold truncate ${
-                isAI ? 'text-[#a78bfa]' : isStudio ? 'text-[#f59e0b]' : 'text-[#38e1ff]'
-              }`}>
-                {isStudio && <span className="mr-1 text-[9px] opacity-70">[СТУДИЯ]</span>}
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold" style={{
+                color: isAI ? '#a78bfa' : isStudio ? '#f59e0b' : '#38e1ff'
+              }}>
+                {isStudio && <span className="mr-1 opacity-60 text-[9px]">[СТУДИЯ]</span>}
                 {msg.username || 'Гость'}
               </span>
-              <span className="text-[9px] text-[#6b7c9e] shrink-0">
-                {formatTime(msg.created_at)}
-              </span>
+              <span className="text-[9px] text-[#4a5a7a]">{formatTime(msg.created_at)}</span>
             </div>
 
             {/* Контент */}
@@ -89,7 +75,7 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
             ) : msg.file_url ? (
               <FileCard url={msg.file_url} name={msg.file_name || 'Файл'} />
             ) : (
-              <p className="text-[13px] text-[#dbe9ff] leading-relaxed break-words">
+              <p className="text-[13px] text-[#c8d8f0] leading-relaxed break-words">
                 {msg.message}
               </p>
             )}
@@ -100,118 +86,193 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
   );
 }
 
-/* ─── Голосовой мини-плеер ─────────────────────────────── */
+/* ─── Голосовой мини-плеер ─────────────────────────────────────────
+   Telegram uslubida: play tugma + progress + waveform + vaqt
+   React state bilan boshqariladi (DOM manipulation yo'q)
+──────────────────────────────────────────────────────────────────── */
 function VoiceMiniPlayer({ url, duration }: { url: string | null; duration?: number | null }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);        // 0..100
+  const [currentTime, setCurrentTime] = useState(0);  // sekund
+  const [totalDuration, setTotalDuration] = useState(duration ?? 0);
+  const [error, setError] = useState(false);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const animRef = useRef<number>(0);
-  const fullUrl = url ? (url.startsWith('http') ? url : `${API_URL}${url}`) : '';
+  const rafRef = useRef<number>(0);
 
-  const startProgress = () => {
-    const audio = audioRef.current;
-    const bar = progressRef.current;
-    if (!audio || !bar) return;
+  const fullUrl = url
+    ? (url.startsWith('http') ? url : `${API_URL}${url}`)
+    : '';
 
+  // Audio elementini bir marta yaratish
+  const getAudio = useCallback(() => {
+    if (!audioRef.current && fullUrl) {
+      const a = new Audio(fullUrl);
+      a.preload = 'metadata';
+
+      a.addEventListener('loadedmetadata', () => {
+        if (a.duration && isFinite(a.duration)) {
+          setTotalDuration(a.duration);
+        }
+      });
+      a.addEventListener('ended', () => {
+        setIsPlaying(false);
+        setProgress(0);
+        setCurrentTime(0);
+        cancelAnimationFrame(rafRef.current);
+      });
+      a.addEventListener('error', () => {
+        setError(true);
+        setIsPlaying(false);
+      });
+      audioRef.current = a;
+    }
+    return audioRef.current;
+  }, [fullUrl]);
+
+  // Progress animatsiyasi
+  const startRaf = useCallback(() => {
     const tick = () => {
-      if (!audio.paused && audio.duration) {
-        bar.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
-        animRef.current = requestAnimationFrame(tick);
+      const a = audioRef.current;
+      if (a && !a.paused && a.duration) {
+        const p = (a.currentTime / a.duration) * 100;
+        setProgress(p);
+        setCurrentTime(a.currentTime);
+        rafRef.current = requestAnimationFrame(tick);
       }
     };
-    animRef.current = requestAnimationFrame(tick);
-  };
+    rafRef.current = requestAnimationFrame(tick);
+  }, []);
 
-  const togglePlay = () => {
-    if (!fullUrl) return;
-    if (!audioRef.current) {
-      audioRef.current = new Audio(fullUrl);
-      audioRef.current.onended = () => {
-        if (progressRef.current) progressRef.current.style.width = '0%';
-        cancelAnimationFrame(animRef.current);
-        // Сброс иконки
-        const btn = containerRef.current?.querySelector('[data-play-btn]');
-        if (btn) btn.textContent = '▶';
-      };
-    }
-    const audio = audioRef.current;
+  const togglePlay = useCallback(() => {
+    if (!fullUrl || error) return;
+    const audio = getAudio();
+    if (!audio) return;
+
     if (audio.paused) {
-      audio.play().catch(console.error);
-      startProgress();
-      const btn = containerRef.current?.querySelector('[data-play-btn]');
-      if (btn) btn.textContent = '⏸';
+      audio.play()
+        .then(() => {
+          setIsPlaying(true);
+          startRaf();
+        })
+        .catch((e) => {
+          console.error('Audio play error:', e);
+          setError(true);
+        });
     } else {
       audio.pause();
-      cancelAnimationFrame(animRef.current);
-      const btn = containerRef.current?.querySelector('[data-play-btn]');
-      if (btn) btn.textContent = '▶';
+      cancelAnimationFrame(rafRef.current);
+      setIsPlaying(false);
     }
-  };
+  }, [fullUrl, error, getAudio, startRaf]);
 
-  const fmt = (s?: number | null) => {
-    if (!s) return '0:00';
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      audioRef.current?.pause();
+    };
+  }, []);
+
+  const fmtSec = (s: number) => {
+    if (!s || !isFinite(s)) return '0:00';
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
+  // Waveform balandliklari (Telegram uslubi — o'rtada baland)
+  const bars = [2, 3, 5, 7, 10, 8, 12, 9, 14, 11, 16, 13, 18, 14, 16, 13, 18, 15, 12, 10, 8, 6, 4, 3, 2];
+  const filledCount = Math.round((progress / 100) * bars.length);
+
   return (
     <div
-      ref={containerRef}
-      className="flex items-center gap-2.5 rounded-xl px-3 py-2"
-      style={{ background: 'rgba(56,225,255,0.06)', border: '1px solid rgba(56,225,255,0.12)' }}
+      className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
+      style={{
+        background: 'rgba(10,20,40,0.6)',
+        border: '1px solid rgba(56,225,255,0.12)',
+      }}
     >
-      {/* Play/Pause кнопка */}
+      {/* Play / Pause tugma */}
       <button
-        data-play-btn
         onClick={togglePlay}
-        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[13px] transition-all active:scale-90"
-        style={{ background: 'linear-gradient(135deg, #2ea8ff, #38e1ff)', color: '#02101f' }}
+        className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+        style={{
+          background: error
+            ? 'rgba(239,68,68,0.2)'
+            : 'linear-gradient(135deg, #1a6aff 0%, #38e1ff 100%)',
+          boxShadow: isPlaying ? '0 0 12px rgba(56,225,255,0.5)' : 'none',
+        }}
+        title={error ? 'Ошибка загрузки' : isPlaying ? 'Пауза' : 'Воспроизвести'}
       >
-        ▶
+        {error ? (
+          <span className="text-[#ef4444] text-xs">!</span>
+        ) : isPlaying ? (
+          /* Pause icon */
+          <svg width="12" height="14" viewBox="0 0 12 14" fill="white">
+            <rect x="0" y="0" width="4" height="14" rx="1.5"/>
+            <rect x="8" y="0" width="4" height="14" rx="1.5"/>
+          </svg>
+        ) : (
+          /* Play icon */
+          <svg width="12" height="14" viewBox="0 0 12 14" fill="white" style={{ marginLeft: 2 }}>
+            <path d="M0 0 L12 7 L0 14 Z"/>
+          </svg>
+        )}
       </button>
 
-      {/* Прогресс + длительность */}
+      {/* Waveform + progress */}
       <div className="flex-1 flex flex-col gap-1.5">
-        {/* Полоска прогресса */}
-        <div className="h-1.5 rounded-full overflow-hidden"
-          style={{ background: 'rgba(56,225,255,0.15)' }}>
+        {/* Waveform bars */}
+        <div className="flex items-center gap-[2.5px]" style={{ height: '20px' }}>
+          {bars.map((h, i) => {
+            const filled = i < filledCount;
+            return (
+              <div
+                key={i}
+                style={{
+                  flex: 1,
+                  height: `${h}px`,
+                  borderRadius: '2px',
+                  background: filled
+                    ? 'linear-gradient(180deg, #38e1ff 0%, #2ea8ff 100%)'
+                    : 'rgba(56,225,255,0.25)',
+                  transition: 'background 0.1s',
+                }}
+              />
+            );
+          })}
+        </div>
+
+        {/* Progress bar ingichka */}
+        <div
+          className="h-[2px] rounded-full overflow-hidden"
+          style={{ background: 'rgba(56,225,255,0.12)' }}
+        >
           <div
-            ref={progressRef}
-            className="h-full rounded-full transition-none"
             style={{
-              width: '0%',
+              height: '100%',
+              width: `${progress}%`,
               background: 'linear-gradient(90deg, #2ea8ff, #38e1ff)',
-              boxShadow: '0 0 6px rgba(56,225,255,0.5)',
+              borderRadius: '2px',
+              transition: 'width 0.05s linear',
             }}
           />
         </div>
-
-        {/* Волна (статичная) */}
-        <div className="flex items-center gap-[2px]" style={{ height: '12px' }}>
-          {[3,5,8,6,10,7,12,8,9,6,10,7,5,8,4,6,3].map((h, i) => (
-            <div
-              key={i}
-              style={{
-                flex: 1,
-                height: `${h}px`,
-                background: 'rgba(56,225,255,0.35)',
-                borderRadius: '1px',
-              }}
-            />
-          ))}
-        </div>
       </div>
 
-      {/* Длительность */}
-      <span className="text-[10px] text-[#6b7c9e] shrink-0 tabular-nums">
-        {fmt(duration)}
+      {/* Вaqt */}
+      <span
+        className="shrink-0 tabular-nums text-[10px]"
+        style={{ color: '#4a5a7a', minWidth: '28px', textAlign: 'right' }}
+      >
+        {isPlaying ? fmtSec(currentTime) : fmtSec(totalDuration)}
       </span>
     </div>
   );
 }
 
-/* ─── Файл ─────────────────────────────────────────────── */
+/* ─── Fayl ──────────────────────────────────────────────── */
 function FileCard({ url, name }: { url: string; name: string }) {
   const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
   const clean = name.replace(/^📎\s*/, '');
@@ -221,14 +282,19 @@ function FileCard({ url, name }: { url: string; name: string }) {
       href={fullUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2.5 rounded-xl px-3 py-2 no-underline transition-all active:scale-[0.98]"
-      style={{ background: 'rgba(56,225,255,0.06)', border: '1px solid rgba(56,225,255,0.12)' }}
+      className="flex items-center gap-2.5 rounded-xl px-3 py-2 no-underline active:scale-[0.98] transition-transform"
+      style={{
+        background: 'rgba(56,225,255,0.05)',
+        border: '1px solid rgba(56,225,255,0.1)',
+      }}
     >
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-        style={{ background: 'rgba(56,225,255,0.12)' }}>
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+        style={{ background: 'rgba(56,225,255,0.1)' }}
+      >
         <FileText className="w-4 h-4 text-[#38e1ff]" />
       </div>
-      <span className="text-[12px] text-[#38e1ff] truncate">{clean}</span>
+      <span className="text-[12px] text-[#8baad0] truncate">{clean}</span>
     </a>
   );
 }
