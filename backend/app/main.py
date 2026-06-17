@@ -139,12 +139,23 @@ if settings.miniapp_dir and os.path.isdir(settings.miniapp_dir):
     if os.path.isdir(_ASSETS):
         app.mount("/assets", StaticFiles(directory=_ASSETS), name="assets")
 
+    # Uploads statik (ovoz va fayllar uchun) — /chat/voice/ va /messages/voice/ ga qadar
+    _upload_dir = settings.upload_dir
+    if _upload_dir and os.path.isdir(_upload_dir):
+        app.mount("/uploads", StaticFiles(directory=_upload_dir), name="uploads")
+
     @app.get("/")
     async def _spa_root():
         return FileResponse(_INDEX)
 
     @app.exception_handler(StarletteHTTPException)
     async def _spa_fallback(request, exc):
+        # API yo'llari uchun JSON xato qaytaramiz
+        api_prefixes = ("/auth/", "/users/", "/chat/", "/news/", "/admin/",
+                        "/messages/", "/radio/", "/health", "/api")
+        if request.url.path.startswith(api_prefixes):
+            return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        # Frontend SPA uchun index.html
         if exc.status_code == 404 and request.method == "GET":
             accept = request.headers.get("accept", "")
             if "text/html" in accept:
