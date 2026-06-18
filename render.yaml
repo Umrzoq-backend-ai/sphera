@@ -1,13 +1,13 @@
 services:
-  # ── Backend + Frontend (bitta service) ──
+  # ── Backend + Frontend (Python) ──
   - type: web
-    name: sphera-backend
-    runtime: docker
-    dockerfilePath: backend/Dockerfile
-    dockerContext: backend
+    name: sphera-radio
+    runtime: python
+    buildCommand: bash build.sh
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: MINIAPP_DIR
-        value: /app/static
+        value: backend/static
       - key: AUDIO_DIR
         value: /tmp/sphera_audio
       - key: UPLOAD_DIR
@@ -16,37 +16,28 @@ services:
         value: "false"
       - key: USE_ICECAST
         value: "false"
+      - key: TTS_PROVIDER
+        value: edge
+      - key: WHISPER_MODEL
+        value: small
       - key: DATABASE_URL
         fromDatabase:
           name: sphera-db
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: sphera-redis
-          type: redis
-          property: connectionString
     healthCheckPath: /health
+    plan: free
 
   # ── Telegram Bot ──
   - type: worker
     name: sphera-bot
-    runtime: docker
-    dockerfilePath: bot/Dockerfile
-    dockerContext: bot
-    envVars:
-      - key: INTERNAL_API_URL
-        fromService:
-          name: sphera-backend
-          type: web
-          property: host
-          envVarKey: INTERNAL_API_URL
+    runtime: python
+    rootDir: bot
+    buildCommand: pip install python-telegram-bot==22.7 httpx==0.28.1
+    startCommand: python bot.py
+    plan: free
 
 databases:
   - name: sphera-db
     databaseName: sphera_db
     user: sphera_user
     plan: free
-
-  - name: sphera-redis
-    plan: free
-    ipAllowList: []
