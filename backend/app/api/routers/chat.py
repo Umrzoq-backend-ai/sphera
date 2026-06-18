@@ -53,10 +53,12 @@ async def get_chat_history(limit: int = 50):
     )
     rows = list(reversed(rows))
     out = []
+    base = settings.api_url.rstrip("/") if settings.api_url else ""
     for r in rows:
         voice_url = None
         if r["message_type"] == "voice" and r["audio_file_path"]:
-            voice_url = f"/chat/voice/{r['audio_file_path']}"
+            rel = f"/chat/voice/{r['audio_file_path']}"
+            voice_url = f"{base}{rel}" if base else rel
         out.append(ChatMessageOut(
             id=r["id"],
             username=r["username"],
@@ -151,6 +153,10 @@ async def send_voice(
     )
 
     voice_url = f"/chat/voice/{fname}"
+    # To'liq URL — Telegram WebApp da relative path ishlamaydi
+    base = settings.api_url.rstrip("/") if settings.api_url else ""
+    full_voice_url = f"{base}/chat/voice/{fname}" if base else voice_url
+
     await manager.broadcast("global", {
         "type": "chat",
         "data": {
@@ -159,12 +165,12 @@ async def send_voice(
             "display_name": _display_name(user),
             "message": "",
             "message_type": "voice",
-            "voice_url": voice_url,
+            "voice_url": full_voice_url,
             "created_at": row["created_at"].isoformat(),
         },
     })
 
-    return OkResponse(detail={"points": str(spent["points"]), "voice_url": voice_url})
+    return OkResponse(detail={"points": str(spent["points"]), "voice_url": full_voice_url})
 
 
 @router.get("/voice/{filename}")

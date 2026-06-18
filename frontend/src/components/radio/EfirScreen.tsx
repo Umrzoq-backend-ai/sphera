@@ -115,6 +115,18 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
       return;
     }
     try {
+      // Telegram WebApp mikrofon ruxsati
+      const tgApp = (window as any).Telegram?.WebApp;
+      if (tgApp?.requestMicrophoneAccess) {
+        const granted: boolean = await new Promise(resolve => {
+          tgApp.requestMicrophoneAccess((ok: boolean) => resolve(ok));
+        });
+        if (!granted) {
+          showToast('Микрофон рұқсаты берілмеді');
+          return;
+        }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const rec = new MediaRecorder(stream);
       mediaRecorderRef.current = rec;
@@ -136,8 +148,13 @@ export function EfirScreen({ user, onPointsUpdate }: EfirScreenProps) {
       rec.start();
       setIsRecording(true);
       showToast(t('toast_recording'));
-    } catch {
-      showToast(t('toast_mic_denied'));
+    } catch (err: any) {
+      console.error('Mic error:', err);
+      if (err?.name === 'NotAllowedError') {
+        showToast('Микрофон рұқсаты жоқ');
+      } else {
+        showToast(t('toast_mic_denied'));
+      }
     }
   };
 
@@ -662,6 +679,18 @@ function ChatInputBar({ city: _city, lang: _lang, onSendText, onPointsUpdate, on
       return;
     }
     try {
+      // Telegram WebApp da mikrofon ruxsati so'rash
+      const tgApp = (window as any).Telegram?.WebApp;
+      if (tgApp?.requestMicrophoneAccess) {
+        const granted: boolean = await new Promise(resolve => {
+          tgApp.requestMicrophoneAccess((ok: boolean) => resolve(ok));
+        });
+        if (!granted) {
+          onToast('Микрофон рұқсаты берілмеді. Telegram настройкаларыдан рұқсат беріңіз.');
+          return;
+        }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       recRef.current = mr;
@@ -678,12 +707,19 @@ function ChatInputBar({ city: _city, lang: _lang, onSendText, onPointsUpdate, on
         setPreviewUrl(URL.createObjectURL(blob));
         setRecSeconds(0);
       };
-      mr.start(100); // har 100ms da chunk
+      mr.start(100);
       setRecording(true);
       setRecSeconds(0);
       timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
-    } catch {
-      onToast('Нет доступа к микрофону');
+    } catch (err: any) {
+      console.error('Mic error:', err);
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        onToast('Микрофон рұқсаты жоқ. Telegram → Настройки → Конфиденциальность → Микрофон');
+      } else if (err?.name === 'NotFoundError') {
+        onToast('Микрофон табылмады');
+      } else {
+        onToast('Микрофонга қол жетімді емес');
+      }
     }
   };
 

@@ -75,6 +75,7 @@ class Settings(BaseSettings):
     # ── Radio ──
     radio_public_url: str = "http://localhost:8000"
     miniapp_dir: str = ""
+    api_url: str = ""   # To'liq URL (voice/file URL lar uchun)
 
     # ── Points cost-model ──
     cost_chat: int = 1
