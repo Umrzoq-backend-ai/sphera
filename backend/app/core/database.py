@@ -23,17 +23,34 @@ class Database:
 
     async def connect(self, max_retries: int = 5, retry_delay: float = 2.0) -> None:
         """Pool yaratadi. Ulanish bo'lmasa retry qiladi."""
-        connect_kwargs = {
-            "host": settings.db_host,
-            "port": settings.db_port,
-            "user": settings.db_user,
-            "database": settings.db_name,
-            "min_size": settings.db_pool_min,
-            "max_size": settings.db_pool_max,
-            "command_timeout": 60,
-        }
-        if settings.db_pass:
-            connect_kwargs["password"] = settings.db_pass
+        # Render va boshqa cloud provayderlar DATABASE_URL beradi
+        if settings.database_url:
+            # postgresql://user:pass@host:port/db formatdan parse qilamiz
+            import urllib.parse as urlparse
+            u = urlparse.urlparse(settings.database_url)
+            connect_kwargs = {
+                "host": u.hostname,
+                "port": u.port or 5432,
+                "user": u.username,
+                "password": u.password,
+                "database": u.path.lstrip("/"),
+                "min_size": settings.db_pool_min,
+                "max_size": settings.db_pool_max,
+                "command_timeout": 60,
+                "ssl": "require",  # Render SSL talab qiladi
+            }
+        else:
+            connect_kwargs = {
+                "host": settings.db_host,
+                "port": settings.db_port,
+                "user": settings.db_user,
+                "database": settings.db_name,
+                "min_size": settings.db_pool_min,
+                "max_size": settings.db_pool_max,
+                "command_timeout": 60,
+            }
+            if settings.db_pass:
+                connect_kwargs["password"] = settings.db_pass
 
         for attempt in range(1, max_retries + 1):
             try:

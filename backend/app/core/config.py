@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     db_name: str = "radio_db"
     db_pool_min: int = 2
     db_pool_max: int = 20
+    database_url: str = ""  # Render: postgresql://user:pass@host/db
 
     # ── Redis ──
     redis_url: str = "redis://localhost:6379/0"
